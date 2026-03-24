@@ -138,6 +138,9 @@ export function registerRoutes(server: Server, app: Express): void {
     if (req.body.active !== undefined) {
       storage.toggleExerciseLibraryActive(id, !!req.body.active);
     }
+    if (req.body.name && req.body.oldName) {
+      storage.renameExerciseInLibrary(id, req.body.oldName, req.body.name);
+    }
     res.json({ ok: true });
   });
   app.delete("/api/exercise-library/:id", (req, res) => {

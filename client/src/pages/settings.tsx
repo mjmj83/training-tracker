@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +10,8 @@ import type { ExerciseLibrary } from "@shared/schema";
 export default function SettingsPage() {
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const { data: exercises = [] } = useQuery<ExerciseLibrary[]>({
     queryKey: ["/api/exercise-library/all"],
@@ -33,16 +35,33 @@ export default function SettingsPage() {
     },
   });
 
+  const renameExercise = useMutation({
+    mutationFn: (data: { id: number; oldName: string; name: string }) =>
+      apiRequest("PATCH", `/api/exercise-library/${data.id}`, { oldName: data.oldName, name: data.name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/exercise-library/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exercise-library"] });
+      setEditingId(null);
+    },
+  });
+
   const filtered = exercises
     .filter(e => !search || e.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      // Active first, then alphabetical
       if (a.active !== b.active) return b.active - a.active;
       return a.name.localeCompare(b.name);
     });
 
   const activeCount = exercises.filter(e => e.active).length;
   const inactiveCount = exercises.filter(e => !e.active).length;
+
+  const handleRename = (ex: ExerciseLibrary) => {
+    if (editingName.trim() && editingName.trim() !== ex.name) {
+      renameExercise.mutate({ id: ex.id, oldName: ex.name, name: editingName.trim() });
+    } else {
+      setEditingId(null);
+    }
+  };
 
   return (
     <div className="p-6 max-w-2xl">
@@ -64,7 +83,7 @@ export default function SettingsPage() {
         <Button
           onClick={() => newName.trim() && addExercise.mutate(newName.trim())}
           disabled={!newName.trim()}
-          className="gap-1"
+          className="gap-1 shrink-0"
           data-testid="button-add-library-exercise"
         >
           <Plus className="w-4 h-4" />
@@ -101,13 +120,42 @@ export default function SettingsPage() {
           filtered.map((ex) => (
             <div
               key={ex.id}
-              className={`flex items-center gap-3 px-4 py-2.5 ${!ex.active ? "opacity-50" : ""}`}
+              className={`flex items-center gap-3 px-4 py-2.5 group ${!ex.active ? "opacity-50" : ""}`}
               data-testid={`library-exercise-${ex.id}`}
             >
-              <span className={`flex-1 text-sm ${!ex.active ? "line-through" : ""}`}>
-                {ex.name}
-              </span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded ${ex.active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+              {editingId === ex.id ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRename(ex);
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    onBlur={() => handleRename(ex)}
+                    className="h-8 text-sm"
+                    autoFocus
+                    data-testid={`input-rename-${ex.id}`}
+                  />
+                </div>
+              ) : (
+                <>
+                  <span className={`flex-1 text-sm ${!ex.active ? "line-through" : ""}`}>
+                    {ex.name}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setEditingId(ex.id);
+                      setEditingName(ex.name);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity p-0.5"
+                    data-testid={`button-rename-${ex.id}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
+              <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${ex.active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
                 {ex.active ? "actief" : "inactief"}
               </span>
               <Switch

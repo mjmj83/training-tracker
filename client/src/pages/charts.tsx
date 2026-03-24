@@ -42,6 +42,9 @@ function CustomTooltip({ active, payload, label }: any) {
       <p style={{ color: "hsl(var(--muted-foreground))" }}>
         Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
       </p>
+      {data?.source && (
+        <p className="text-muted-foreground mt-0.5">{data.source}</p>
+      )}
     </div>
   );
 }
@@ -50,7 +53,6 @@ export default function ChartsPage() {
   const { clientId } = useSelectedClient();
   const { monthId } = useSelectedMonth();
 
-  // Check if navigated with a specific exercise name
   const [, params] = useRoute("/charts/:exerciseName");
   const highlightName = params?.exerciseName ? decodeURIComponent(params.exerciseName) : null;
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -61,7 +63,6 @@ export default function ChartsPage() {
     enabled: !!monthId,
   });
 
-  // Scroll to highlighted exercise chart
   useEffect(() => {
     if (highlightRef.current) {
       highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -87,17 +88,12 @@ export default function ChartsPage() {
 
   const weekCount = data.month?.weekCount ?? 4;
 
-  const exerciseCharts: {
-    name: string;
-    day: string;
-    data: { week: string; lastSetWeight: number; lastSetReps: number | null }[];
-  }[] = [];
+  // Collect all data points grouped by exercise NAME (not by day)
+  const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; source: string; sortDate: string }[]>();
 
   for (const day of data.trainingDays) {
     for (const ex of day.exercises) {
       if (ex.weightLogs.length === 0) continue;
-
-      const weekData: { week: string; lastSetWeight: number; lastSetReps: number | null }[] = [];
 
       for (let w = 1; w <= weekCount; w++) {
         const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
@@ -111,19 +107,28 @@ export default function ChartsPage() {
           (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
         );
 
-        weekData.push({
-          week: weekDate?.date
-            ? new Date(weekDate.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
-            : `W${w}`,
+        const dateStr = weekDate?.date || "";
+        const label = dateStr
+          ? new Date(dateStr).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
+          : `${day.name} W${w}`;
+
+        if (!exerciseMap.has(ex.name)) exerciseMap.set(ex.name, []);
+        exerciseMap.get(ex.name)!.push({
+          week: label,
           lastSetWeight: lastSet.weight ?? 0,
           lastSetReps: lastSet.reps,
+          source: `${day.name} W${w}`,
+          sortDate: dateStr || `${day.sortOrder}-${w}`,
         });
       }
-
-      if (weekData.length > 0) {
-        exerciseCharts.push({ name: ex.name, day: day.name, data: weekData });
-      }
     }
+  }
+
+  // Build chart data sorted by date
+  const exerciseCharts: { name: string; data: any[] }[] = [];
+  for (const [name, points] of exerciseMap) {
+    const sorted = points.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+    exerciseCharts.push({ name, data: sorted });
   }
 
   if (exerciseCharts.length === 0) {
@@ -135,7 +140,6 @@ export default function ChartsPage() {
     );
   }
 
-  // If a specific exercise is highlighted, show it first
   const sortedCharts = highlightName
     ? [...exerciseCharts].sort((a, b) => {
         if (a.name === highlightName) return -1;
@@ -162,10 +166,7 @@ export default function ChartsPage() {
                 data-testid={`chart-${chart.name}`}
               >
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {chart.name}
-                    <span className="text-muted-foreground font-normal ml-2 text-xs">{chart.day}</span>
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium">{chart.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>

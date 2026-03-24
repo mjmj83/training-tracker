@@ -258,6 +258,12 @@ export class SqliteStorage {
   toggleExerciseLibraryActive(id: number, active: boolean): void {
     sqlite.prepare("UPDATE exercise_library SET active = ? WHERE id = ?").run(active ? 1 : 0, id);
   }
+  renameExerciseInLibrary(id: number, oldName: string, newName: string): void {
+    // Update library entry
+    sqlite.prepare("UPDATE exercise_library SET name = ? WHERE id = ?").run(newName, id);
+    // Cascade: update all exercises in all training programs that have this name
+    sqlite.prepare("UPDATE exercises SET name = ? WHERE name = ?").run(newName, oldName);
+  }
   deleteExerciseFromLibrary(id: number): void {
     db.delete(exerciseLibrary).where(eq(exerciseLibrary.id, id)).run();
   }
