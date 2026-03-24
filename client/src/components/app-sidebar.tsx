@@ -1,4 +1,4 @@
-import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen } from "lucide-react";
+import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -83,7 +83,15 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 pb-3">
         <div className="flex items-center gap-2 mb-2">
           <Dumbbell className="w-5 h-5 text-primary" />
-          <span className="font-semibold text-sm">Training Tracker</span>
+          <span className="font-semibold text-sm flex-1">Training Tracker</span>
+          <Link href="/settings">
+            <button
+              className={`p-1 rounded transition-colors ${location === "/settings" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              data-testid="button-global-settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </Link>
         </div>
 
         {/* Client Switcher */}

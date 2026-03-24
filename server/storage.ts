@@ -70,7 +70,8 @@ sqlite.exec(`
   );
   CREATE TABLE IF NOT EXISTS exercise_library (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
+    name TEXT NOT NULL UNIQUE,
+    active INTEGER NOT NULL DEFAULT 1
   );
   CREATE TABLE IF NOT EXISTS snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,6 +87,7 @@ try { sqlite.exec("ALTER TABLE exercises ADD COLUMN superset_group_id INTEGER");
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
+try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN active INTEGER NOT NULL DEFAULT 1"); } catch {}
 
 export class SqliteStorage {
   // Clients
@@ -231,21 +233,33 @@ export class SqliteStorage {
     return db.insert(weightLogs).values(data).returning().get();
   }
 
-  // Exercise Library — fuzzy search: each word in query must appear somewhere in the name
+  // Exercise Library — fuzzy search (active only)
   searchExerciseLibrary(query: string): ExerciseLibrary[] {
-    if (!query || query.length === 0) return db.select().from(exerciseLibrary).all();
-    // Split query into words, each must match (AND logic)
+    if (!query || query.length === 0) {
+      return sqlite.prepare(`SELECT id, name, active FROM exercise_library WHERE active = 1 ORDER BY name`).all() as ExerciseLibrary[];
+    }
     const words = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
-    if (words.length === 0) return db.select().from(exerciseLibrary).all();
-    const conditions = words.map((_, i) => `LOWER(name) LIKE ?`).join(" AND ");
+    if (words.length === 0) {
+      return sqlite.prepare(`SELECT id, name, active FROM exercise_library WHERE active = 1 ORDER BY name`).all() as ExerciseLibrary[];
+    }
+    const conditions = words.map(() => `LOWER(name) LIKE ?`).join(" AND ");
     const params = words.map(w => `%${w}%`);
-    const rows = sqlite.prepare(`SELECT id, name FROM exercise_library WHERE ${conditions} ORDER BY name`).all(...params) as ExerciseLibrary[];
-    return rows;
+    return sqlite.prepare(`SELECT id, name, active FROM exercise_library WHERE active = 1 AND ${conditions} ORDER BY name`).all(...params) as ExerciseLibrary[];
+  }
+  // Get ALL exercises (including inactive) for admin
+  getAllExerciseLibrary(): ExerciseLibrary[] {
+    return db.select().from(exerciseLibrary).all();
   }
   addToExerciseLibrary(name: string): ExerciseLibrary | undefined {
     const existing = db.select().from(exerciseLibrary).where(eq(exerciseLibrary.name, name)).get();
     if (existing) return existing;
-    try { return db.insert(exerciseLibrary).values({ name }).returning().get(); } catch { return undefined; }
+    try { return db.insert(exerciseLibrary).values({ name, active: 1 }).returning().get(); } catch { return undefined; }
+  }
+  toggleExerciseLibraryActive(id: number, active: boolean): void {
+    sqlite.prepare("UPDATE exercise_library SET active = ? WHERE id = ?").run(active ? 1 : 0, id);
+  }
+  deleteExerciseFromLibrary(id: number): void {
+    db.delete(exerciseLibrary).where(eq(exerciseLibrary.id, id)).run();
   }
 
   // Snapshots (for save state)

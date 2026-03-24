@@ -90,6 +90,7 @@ export type WeightLog = typeof weightLogs.$inferSelect;
 export const exerciseLibrary = sqliteTable("exercise_library", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
+  active: integer("active").notNull().default(1), // 1 = active, 0 = inactive
 });
 
 export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).omit({ id: true });

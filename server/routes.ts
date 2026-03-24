@@ -124,6 +124,26 @@ export function registerRoutes(server: Server, app: Express): void {
   app.get("/api/exercise-library", (req, res) => {
     res.json(storage.searchExerciseLibrary((req.query.q as string) || ""));
   });
+  app.get("/api/exercise-library/all", (_req, res) => {
+    res.json(storage.getAllExerciseLibrary());
+  });
+  app.post("/api/exercise-library", (req, res) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: "Name required" });
+    const ex = storage.addToExerciseLibrary(name);
+    res.json(ex);
+  });
+  app.patch("/api/exercise-library/:id", (req, res) => {
+    const id = parseInt(req.params.id);
+    if (req.body.active !== undefined) {
+      storage.toggleExerciseLibraryActive(id, !!req.body.active);
+    }
+    res.json({ ok: true });
+  });
+  app.delete("/api/exercise-library/:id", (req, res) => {
+    storage.deleteExerciseFromLibrary(parseInt(req.params.id));
+    res.json({ ok: true });
+  });
 
   // ============= FULL MONTH DATA =============
   app.get("/api/months/:monthId/full", (req, res) => {
