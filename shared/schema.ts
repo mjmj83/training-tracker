@@ -128,3 +128,40 @@ export const snapshots = sqliteTable("snapshots", {
 export const insertSnapshotSchema = createInsertSchema(snapshots).omit({ id: true });
 export type InsertSnapshot = z.infer<typeof insertSnapshotSchema>;
 export type Snapshot = typeof snapshots.$inferSelect;
+
+// Auth: users
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  role: text("role").notNull().default("client"), // 'trainer' | 'client'
+  clientId: integer("client_id").references(() => clients.id), // linked client for 'client' role
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
+// Auth: passkey credentials
+export const credentials = sqliteTable("credentials", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => users.id),
+  credentialId: text("credential_id").notNull().unique(), // base64url encoded
+  publicKey: text("public_key").notNull(), // base64url encoded
+  counter: integer("counter").notNull().default(0),
+  transports: text("transports"), // JSON array
+  createdAt: text("created_at").notNull(),
+});
+
+export type Credential = typeof credentials.$inferSelect;
+
+// Auth: sessions
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(), // random session token
+  userId: integer("user_id").notNull().references(() => users.id),
+  challenge: text("challenge"), // temporary WebAuthn challenge
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+});
+
+export type Session = typeof sessions.$inferSelect;

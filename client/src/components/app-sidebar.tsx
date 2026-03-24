@@ -1,8 +1,9 @@
-import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator } from "lucide-react";
+import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
+import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ import ConfirmDialog from "@/components/confirm-dialog";
 import type { Client } from "@shared/schema";
 
 export function AppSidebar() {
+  const { user, logout } = useAuth();
   const { clientId, setClientId } = useSelectedClient();
   const { monthId } = useSelectedMonth();
   const [location] = useLocation();
@@ -266,6 +268,23 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      {/* User / Logout */}
+      <div className="mt-auto border-t border-border p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground truncate flex-1">
+            {user?.email}
+          </span>
+          <button
+            onClick={logout}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Uitloggen"
+            data-testid="button-logout"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
 
       {/* Client create/edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

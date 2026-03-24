@@ -11,6 +11,9 @@ import {
   weightLogs, type WeightLog, type InsertWeightLog,
   exerciseLibrary, type ExerciseLibrary,
   snapshots, type Snapshot, type InsertSnapshot,
+  users, type User,
+  credentials, type Credential,
+  sessions, type Session,
 } from "@shared/schema";
 
 const sqlite = new Database("training.db");
@@ -112,6 +115,41 @@ try { sqlite.exec("ALTER TABLE abc_measurements ADD COLUMN neck_cm REAL NOT NULL
 try { sqlite.exec("ALTER TABLE abc_measurements ADD COLUMN hip_cm REAL"); } catch {}
 // Make weight_kg nullable (SQLite doesn't support ALTER COLUMN, old rows keep their value)
 // Old measurements that lack the new fields are kept as-is; new ones use the full formula.
+
+// Auth tables
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'client',
+    client_id INTEGER REFERENCES clients(id)
+  );
+  CREATE TABLE IF NOT EXISTS credentials (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    credential_id TEXT NOT NULL UNIQUE,
+    public_key TEXT NOT NULL,
+    counter INTEGER NOT NULL DEFAULT 0,
+    transports TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    challenge TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+`);
+
+// Seed default trainer user
+{
+  const userCount = db.select().from(users).all().length;
+  if (userCount === 0) {
+    db.insert(users).values({ email: "trainer@training.app", displayName: "Trainer", role: "trainer" }).run();
+  }
+}
 
 export class SqliteStorage {
   // Clients
@@ -309,6 +347,77 @@ export class SqliteStorage {
   }
   createSnapshot(data: InsertSnapshot): Snapshot {
     return db.insert(snapshots).values(data).returning().get();
+  }
+
+  // ===== AUTH: Users =====
+  getUserByEmail(email: string): User | undefined {
+    return db.select().from(users).where(eq(users.email, email)).get();
+  }
+  getUserById(id: number): User | undefined {
+    return db.select().from(users).where(eq(users.id, id)).get();
+  }
+  getUsers(): User[] {
+    return db.select().from(users).all();
+  }
+  createUser(data: { email: string; displayName: string; role?: string; clientId?: number | null }): User {
+    return db.insert(users).values({
+      email: data.email,
+      displayName: data.displayName,
+      role: data.role ?? "client",
+      clientId: data.clientId ?? null,
+    }).returning().get();
+  }
+  updateUser(id: number, data: Partial<{ email: string; displayName: string; role: string; clientId: number | null }>): User | undefined {
+    return db.update(users).set(data).where(eq(users.id, id)).returning().get();
+  }
+
+  // ===== AUTH: Credentials =====
+  getCredentialsByUserId(userId: number): Credential[] {
+    return db.select().from(credentials).where(eq(credentials.userId, userId)).all();
+  }
+  getCredentialByCredentialId(credentialId: string): Credential | undefined {
+    return db.select().from(credentials).where(eq(credentials.credentialId, credentialId)).get();
+  }
+  createCredential(data: { userId: number; credentialId: string; publicKey: string; counter: number; transports?: string | null; createdAt: string }): void {
+    db.insert(credentials).values({
+      userId: data.userId,
+      credentialId: data.credentialId,
+      publicKey: data.publicKey,
+      counter: data.counter,
+      transports: data.transports ?? null,
+      createdAt: data.createdAt,
+    }).run();
+  }
+  updateCredentialCounter(credentialId: string, newCounter: number): void {
+    db.update(credentials).set({ counter: newCounter }).where(eq(credentials.credentialId, credentialId)).run();
+  }
+
+  // ===== AUTH: Sessions =====
+  createSession(id: string, userId: number, challenge?: string): Session {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    return db.insert(sessions).values({
+      id,
+      userId,
+      challenge: challenge ?? null,
+      createdAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    }).returning().get();
+  }
+  getSession(id: string): (Session & { user: User }) | undefined {
+    const result = db.select().from(sessions).innerJoin(users, eq(sessions.userId, users.id)).where(eq(sessions.id, id)).get();
+    if (!result) return undefined;
+    return { ...result.sessions, user: result.users };
+  }
+  updateSessionChallenge(id: string, challenge: string): void {
+    db.update(sessions).set({ challenge }).where(eq(sessions.id, id)).run();
+  }
+  deleteSession(id: string): void {
+    db.delete(sessions).where(eq(sessions.id, id)).run();
+  }
+  cleanExpiredSessions(): void {
+    const now = new Date().toISOString();
+    sqlite.prepare("DELETE FROM sessions WHERE expires_at < ?").run(now);
   }
 
   // Full month data as JSON (for snapshots)

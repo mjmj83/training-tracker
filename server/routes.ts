@@ -1,8 +1,13 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { registerAuthRoutes, authMiddleware } from "./auth";
 
 export function registerRoutes(server: Server, app: Express): void {
+  // ============= AUTH =============
+  registerAuthRoutes(app, storage);
+  app.use(authMiddleware(storage));
+
   // ============= CLIENTS =============
   app.get("/api/clients", (_req, res) => { res.json(storage.getClients()); });
   app.post("/api/clients", (req, res) => {
