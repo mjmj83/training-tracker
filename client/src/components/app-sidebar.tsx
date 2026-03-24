@@ -3,9 +3,10 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +23,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import ConfirmDialog from "@/components/confirm-dialog";
 import type { Client } from "@shared/schema";
 
@@ -30,14 +38,17 @@ export function AppSidebar() {
   const { monthId } = useSelectedMonth();
   const [location] = useLocation();
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
-  const [newClientName, setNewClientName] = useState("");
-  const [newClientGender, setNewClientGender] = useState<"male" | "female">("male");
-  const [editingClientId, setEditingClientId] = useState<number | null>(null);
-  const [editingClientName, setEditingClientName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<{
     id: number;
     label: string;
   } | null>(null);
+
+  // Client form dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [dialogClientId, setDialogClientId] = useState<number | null>(null);
+  const [dialogName, setDialogName] = useState("");
+  const [dialogGender, setDialogGender] = useState<"male" | "female">("male");
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -50,10 +61,9 @@ export function AppSidebar() {
     onSuccess: async (res) => {
       const newClient = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      setNewClientName("");
-      setNewClientGender("male");
       setClientId(newClient.id);
       setClientPopoverOpen(false);
+      setDialogOpen(false);
     },
   });
 
@@ -74,7 +84,7 @@ export function AppSidebar() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      setEditingClientId(null);
+      setDialogOpen(false);
     },
   });
 
@@ -82,6 +92,32 @@ export function AppSidebar() {
     if (!confirmDelete) return;
     deleteClient.mutate(confirmDelete.id);
     setConfirmDelete(null);
+  };
+
+  const openCreateDialog = () => {
+    setDialogMode("create");
+    setDialogClientId(null);
+    setDialogName("");
+    setDialogGender("male");
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (client: Client) => {
+    setDialogMode("edit");
+    setDialogClientId(client.id);
+    setDialogName(client.name);
+    setDialogGender((client.gender as "male" | "female") || "male");
+    setClientPopoverOpen(false);
+    setDialogOpen(true);
+  };
+
+  const handleDialogSave = () => {
+    if (!dialogName.trim()) return;
+    if (dialogMode === "create") {
+      createClient.mutate({ name: dialogName.trim(), gender: dialogGender });
+    } else if (dialogClientId) {
+      updateClient.mutate({ id: dialogClientId, name: dialogName.trim(), gender: dialogGender });
+    }
   };
 
   return (
@@ -118,123 +154,54 @@ export function AppSidebar() {
             <div className="space-y-1">
               {clients.map((client) => (
                 <div key={client.id} className="flex items-center group">
-                  {editingClientId === client.id ? (
-                    <div className="flex gap-1 flex-1 px-1">
-                      <Input
-                        value={editingClientName}
-                        onChange={(e) => setEditingClientName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && editingClientName.trim()) {
-                            updateClient.mutate({ id: client.id, name: editingClientName.trim() });
-                          }
-                          if (e.key === "Escape") setEditingClientId(null);
-                        }}
-                        onBlur={() => {
-                          if (editingClientName.trim()) {
-                            updateClient.mutate({ id: client.id, name: editingClientName.trim() });
-                          } else {
-                            setEditingClientId(null);
-                          }
-                        }}
-                        className="h-7 text-xs"
-                        autoFocus
-                        data-testid={`input-client-name-${client.id}`}
-                      />
-                    </div>
-                  ) : (
-                    <button
-                      className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left"
-                      onClick={() => {
-                        setClientId(client.id);
-                        setClientPopoverOpen(false);
-                      }}
-                      data-testid={`button-client-${client.id}`}
-                    >
-                      <Check className={`w-3.5 h-3.5 shrink-0 ${clientId === client.id ? "opacity-100 text-primary" : "opacity-0"}`} />
-                      <span className="flex-1 truncate">{client.name}</span>
+                  <button
+                    className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                    onClick={() => {
+                      setClientId(client.id);
+                      setClientPopoverOpen(false);
+                    }}
+                    data-testid={`button-client-${client.id}`}
+                  >
+                    <Check className={`w-3.5 h-3.5 shrink-0 ${clientId === client.id ? "opacity-100 text-primary" : "opacity-0"}`} />
+                    <span className="flex-1 truncate">{client.name}</span>
+                    <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                      {client.gender === "male" ? "M" : "V"}
+                    </span>
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          updateClient.mutate({ id: client.id, gender: client.gender === "male" ? "female" : "male" });
+                          openEditDialog(client);
                         }}
-                        className="text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors opacity-0 group-hover:opacity-100"
-                        data-testid={`button-toggle-gender-${client.id}`}
-                        title={`Geslacht: ${client.gender === "male" ? "Man" : "Vrouw"} — klik om te wijzigen`}
+                        className="hover:text-primary p-0.5"
+                        data-testid={`button-edit-client-${client.id}`}
                       >
-                        {client.gender === "male" ? "M" : "V"}
+                        <Pencil className="w-3 h-3" />
                       </button>
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingClientId(client.id);
-                            setEditingClientName(client.name);
-                          }}
-                          className="hover:text-primary p-0.5"
-                          data-testid={`button-edit-client-${client.id}`}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setClientPopoverOpen(false);
-                            setConfirmDelete({ id: client.id, label: client.name });
-                          }}
-                          className="hover:text-destructive p-0.5"
-                          data-testid={`button-delete-client-${client.id}`}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </button>
-                  )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setClientPopoverOpen(false);
+                          setConfirmDelete({ id: client.id, label: client.name });
+                        }}
+                        className="hover:text-destructive p-0.5"
+                        data-testid={`button-delete-client-${client.id}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </button>
                 </div>
               ))}
-              <div className="border-t border-border pt-1 mt-1">
-                <div className="flex gap-1 px-1">
-                  <Input
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                    placeholder="Nieuwe klant..."
-                    className="h-7 text-xs"
-                    data-testid="input-new-client"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newClientName.trim()) {
-                        createClient.mutate({ name: newClientName.trim(), gender: newClientGender });
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs px-2"
-                    onClick={() => newClientName.trim() && createClient.mutate({ name: newClientName.trim(), gender: newClientGender })}
-                    disabled={!newClientName.trim()}
-                    data-testid="button-save-client"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-                <div className="flex gap-1 px-1">
-                  <button
-                    onClick={() => setNewClientGender("male")}
-                    className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
-                      newClientGender === "male" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                    }`}
-                    data-testid="button-new-client-male"
-                  >
-                    Man
-                  </button>
-                  <button
-                    onClick={() => setNewClientGender("female")}
-                    className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
-                      newClientGender === "female" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                    }`}
-                    data-testid="button-new-client-female"
-                  >
-                    Vrouw
-                  </button>
-                </div>
+              <div className="border-t border-border pt-1 mt-1 px-1">
+                <button
+                  onClick={openCreateDialog}
+                  className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  data-testid="button-add-client"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Nieuwe klant</span>
+                </button>
               </div>
             </div>
           </PopoverContent>
@@ -300,10 +267,71 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
+      {/* Client create/edit dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[340px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {dialogMode === "create" ? "Nieuwe klant" : "Klant wijzigen"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Naam</Label>
+              <Input
+                value={dialogName}
+                onChange={(e) => setDialogName(e.target.value)}
+                placeholder="Klantnaam..."
+                className="text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleDialogSave();
+                }}
+                data-testid="input-dialog-client-name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Geslacht</Label>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setDialogGender("male")}
+                  className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
+                    dialogGender === "male" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid="button-dialog-gender-male"
+                >
+                  Man
+                </button>
+                <button
+                  onClick={() => setDialogGender("female")}
+                  className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
+                    dialogGender === "female" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid="button-dialog-gender-female"
+                >
+                  Vrouw
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              size="sm"
+              onClick={handleDialogSave}
+              disabled={!dialogName.trim()}
+              className="text-xs"
+              data-testid="button-dialog-save-client"
+            >
+              {dialogMode === "create" ? "Toevoegen" : "Opslaan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
-        title="Are you sure?"
+        title="Klant verwijderen?"
         description={confirmDelete ? `"${confirmDelete.label}" wordt permanent verwijderd met alle bijbehorende data.` : ""}
         onConfirm={handleConfirmDelete}
       />
