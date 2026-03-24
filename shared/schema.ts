@@ -6,6 +6,7 @@ import { z } from "zod";
 export const clients = sqliteTable("clients", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
+  notes: text("notes").default(""),
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });

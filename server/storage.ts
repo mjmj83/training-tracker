@@ -22,7 +22,8 @@ export const db = drizzle(sqlite);
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    notes TEXT DEFAULT ''
   );
   CREATE TABLE IF NOT EXISTS months (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,14 +85,21 @@ try { sqlite.exec("ALTER TABLE months ADD COLUMN week_count INTEGER NOT NULL DEF
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN superset_group_id INTEGER"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
+try { sqlite.exec("ALTER TABLE clients ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 
 export class SqliteStorage {
   // Clients
   getClients(): Client[] {
     return db.select().from(clients).all();
   }
+  getClient(id: number): Client | undefined {
+    return db.select().from(clients).where(eq(clients.id, id)).get();
+  }
   createClient(data: InsertClient): Client {
     return db.insert(clients).values(data).returning().get();
+  }
+  updateClient(id: number, data: Partial<InsertClient>): Client | undefined {
+    return db.update(clients).set(data).where(eq(clients.id, id)).returning().get();
   }
   deleteClient(id: number): void {
     const monthList = db.select().from(months).where(eq(months.clientId, id)).all();

@@ -10,6 +10,14 @@ export function registerRoutes(server: Server, app: Express): void {
     if (!name || typeof name !== "string") return res.status(400).json({ error: "Name is required" });
     res.json(storage.createClient({ name }));
   });
+  app.get("/api/clients/:id", (req, res) => {
+    const client = storage.getClient(parseInt(req.params.id));
+    if (!client) return res.status(404).json({ error: "Client not found" });
+    res.json(client);
+  });
+  app.patch("/api/clients/:id", (req, res) => {
+    res.json(storage.updateClient(parseInt(req.params.id), req.body));
+  });
   app.delete("/api/clients/:id", (req, res) => {
     storage.deleteClient(parseInt(req.params.id));
     res.json({ ok: true });

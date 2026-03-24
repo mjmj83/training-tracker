@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import TrainingDaySection from "@/components/training-day-section";
 import AddTrainingDay from "@/components/add-training-day";
 import WeekCountSelector from "@/components/week-count-selector";
+import ClientNotepad from "@/components/client-notepad";
 import { useUndoRedo } from "@/lib/undo-redo";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 import { useEffect, useCallback } from "react";
@@ -69,12 +70,7 @@ export default function TrainingPage() {
   }
 
   if (!monthId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
-        <Dumbbell className="w-10 h-10 opacity-30" />
-        <p className="text-sm">Selecteer een maand of maak een nieuwe aan</p>
-      </div>
-    );
+    return <ClientNotepad clientId={clientId} />;
   }
 
   if (isLoading) {
