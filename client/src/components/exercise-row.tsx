@@ -2,13 +2,13 @@ import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Trash2, GripVertical, Unlink, MessageCircleWarning, BarChart3 } from "lucide-react";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import WeightCell from "@/components/weight-cell";
 import ConfirmDialog from "@/components/confirm-dialog";
+import ExerciseChartDialog from "@/components/exercise-chart-dialog";
 import type { Exercise, WeightLog } from "@shared/schema";
 
 interface Props {
@@ -42,7 +42,7 @@ export default function ExerciseRow({
   const [rest, setRest] = useState(exercise.rest ?? 60);
   const [notes, setNotes] = useState(exercise.notes ?? "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [, navigate] = useLocation();
+  const [showChart, setShowChart] = useState(false);
   const [showNotesDialog, setShowNotesDialog] = useState(false);
   const [editingNotes, setEditingNotes] = useState("");
 
@@ -245,7 +245,7 @@ export default function ExerciseRow({
               <Button
                 size="icon" variant="ghost"
                 className="h-5 w-5 text-muted-foreground hover:text-primary"
-                onClick={() => navigate(`/charts/${encodeURIComponent(exercise.name)}`)}
+                onClick={() => setShowChart(true)}
                 data-testid={`button-chart-${exercise.id}`}
               >
                 <BarChart3 className="w-3 h-3" />
@@ -321,6 +321,11 @@ export default function ExerciseRow({
           </DialogContent>
         </Dialog>
       </td>
+      <ExerciseChartDialog
+        exerciseName={showChart ? exercise.name : null}
+        open={showChart}
+        onOpenChange={setShowChart}
+      />
     </tr>
   );
 }
