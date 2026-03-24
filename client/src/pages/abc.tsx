@@ -1,11 +1,19 @@
 import { useSelectedClient } from "@/lib/state";
+import { useQuery } from "@tanstack/react-query";
 import { Dumbbell } from "lucide-react";
 import AbcCalculator from "@/components/abc-calculator";
+import type { Client } from "@shared/schema";
 
 export default function AbcPage() {
   const { clientId } = useSelectedClient();
 
-  if (!clientId) {
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const client = clients.find(c => c.id === clientId);
+
+  if (!clientId || !client) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
         <Dumbbell className="w-10 h-10 opacity-30" />
@@ -20,7 +28,7 @@ export default function AbcPage() {
       <p className="text-xs text-muted-foreground mb-6">
         US Army Body Composition (AR 600-9) — schat het vetpercentage op basis van omtrekmetingen.
       </p>
-      <AbcCalculator clientId={clientId} />
+      <AbcCalculator clientId={clientId} clientGender={client.gender as "male" | "female"} />
     </div>
   );
 }

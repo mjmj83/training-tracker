@@ -31,6 +31,7 @@ export function AppSidebar() {
   const [location] = useLocation();
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
+  const [newClientGender, setNewClientGender] = useState<"male" | "female">("male");
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [editingClientName, setEditingClientName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -45,11 +46,12 @@ export function AppSidebar() {
   const selectedClient = clients.find(c => c.id === clientId);
 
   const createClient = useMutation({
-    mutationFn: (name: string) => apiRequest("POST", "/api/clients", { name }),
+    mutationFn: (data: { name: string; gender: string }) => apiRequest("POST", "/api/clients", data),
     onSuccess: async (res) => {
       const newClient = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setNewClientName("");
+      setNewClientGender("male");
       setClientId(newClient.id);
       setClientPopoverOpen(false);
     },
@@ -63,9 +65,13 @@ export function AppSidebar() {
     },
   });
 
-  const updateClientName = useMutation({
-    mutationFn: (data: { id: number; name: string }) =>
-      apiRequest("PATCH", `/api/clients/${data.id}`, { name: data.name }),
+  const updateClient = useMutation({
+    mutationFn: (data: { id: number; name?: string; gender?: string }) => {
+      const body: Record<string, string> = {};
+      if (data.name !== undefined) body.name = data.name;
+      if (data.gender !== undefined) body.gender = data.gender;
+      return apiRequest("PATCH", `/api/clients/${data.id}`, body);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setEditingClientId(null);
@@ -119,13 +125,13 @@ export function AppSidebar() {
                         onChange={(e) => setEditingClientName(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && editingClientName.trim()) {
-                            updateClientName.mutate({ id: client.id, name: editingClientName.trim() });
+                            updateClient.mutate({ id: client.id, name: editingClientName.trim() });
                           }
                           if (e.key === "Escape") setEditingClientId(null);
                         }}
                         onBlur={() => {
                           if (editingClientName.trim()) {
-                            updateClientName.mutate({ id: client.id, name: editingClientName.trim() });
+                            updateClient.mutate({ id: client.id, name: editingClientName.trim() });
                           } else {
                             setEditingClientId(null);
                           }
@@ -146,6 +152,17 @@ export function AppSidebar() {
                     >
                       <Check className={`w-3.5 h-3.5 shrink-0 ${clientId === client.id ? "opacity-100 text-primary" : "opacity-0"}`} />
                       <span className="flex-1 truncate">{client.name}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateClient.mutate({ id: client.id, gender: client.gender === "male" ? "female" : "male" });
+                        }}
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors opacity-0 group-hover:opacity-100"
+                        data-testid={`button-toggle-gender-${client.id}`}
+                        title={`Geslacht: ${client.gender === "male" ? "Man" : "Vrouw"} — klik om te wijzigen`}
+                      >
+                        {client.gender === "male" ? "M" : "V"}
+                      </button>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => {
@@ -184,19 +201,39 @@ export function AppSidebar() {
                     data-testid="input-new-client"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && newClientName.trim()) {
-                        createClient.mutate(newClientName.trim());
+                        createClient.mutate({ name: newClientName.trim(), gender: newClientGender });
                       }
                     }}
                   />
                   <Button
                     size="sm"
                     className="h-7 text-xs px-2"
-                    onClick={() => newClientName.trim() && createClient.mutate(newClientName.trim())}
+                    onClick={() => newClientName.trim() && createClient.mutate({ name: newClientName.trim(), gender: newClientGender })}
                     disabled={!newClientName.trim()}
                     data-testid="button-save-client"
                   >
                     <Plus className="w-3 h-3" />
                   </Button>
+                </div>
+                <div className="flex gap-1 px-1">
+                  <button
+                    onClick={() => setNewClientGender("male")}
+                    className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
+                      newClientGender === "male" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    }`}
+                    data-testid="button-new-client-male"
+                  >
+                    Man
+                  </button>
+                  <button
+                    onClick={() => setNewClientGender("female")}
+                    className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
+                      newClientGender === "female" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    }`}
+                    data-testid="button-new-client-female"
+                  >
+                    Vrouw
+                  </button>
                 </div>
               </div>
             </div>

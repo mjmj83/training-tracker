@@ -13,6 +13,7 @@ import type { AbcMeasurement } from "@shared/schema";
 
 interface Props {
   clientId: number;
+  clientGender: "male" | "female";
 }
 
 // US Army AR 600-9 Body Composition formulas
@@ -97,8 +98,8 @@ function MiniChart({ title, icon, data, dataKey, unit, color }: {
   );
 }
 
-export default function AbcCalculator({ clientId }: Props) {
-  const [gender, setGender] = useState<"male" | "female">("male");
+export default function AbcCalculator({ clientId, clientGender }: Props) {
+  const gender = clientGender;
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [neckCm, setNeckCm] = useState("");
@@ -135,7 +136,7 @@ export default function AbcCalculator({ clientId }: Props) {
     const n = parseFloat(neckCm);
     const a = parseFloat(abdomenCm);
     if (!h || !n || !a || !date) return false;
-    if (gender === "female") {
+    if (clientGender === "female") {
       const hip = parseFloat(hipCm);
       if (!hip) return false;
     }
@@ -147,13 +148,13 @@ export default function AbcCalculator({ clientId }: Props) {
     const n = parseFloat(neckCm);
     const a = parseFloat(abdomenCm);
     const w = weightKg ? parseFloat(weightKg) : undefined;
-    const hip = gender === "female" ? parseFloat(hipCm) : undefined;
+    const hip = clientGender === "female" ? parseFloat(hipCm) : undefined;
     if (!h || !n || !a || !date) return;
-    if (gender === "female" && !hip) return;
+    if (clientGender === "female" && !hip) return;
 
-    const bf = calculateBodyFat(gender, h, n, a, hip);
+    const bf = calculateBodyFat(clientGender, h, n, a, hip);
     addMeasurement.mutate({
-      clientId, date, gender,
+      clientId, date, gender: clientGender,
       weightKg: w || null,
       heightCm: h,
       neckCm: n,
@@ -169,12 +170,12 @@ export default function AbcCalculator({ clientId }: Props) {
     const n = parseFloat(neckCm);
     const a = parseFloat(abdomenCm);
     if (!h || !n || !a) return null;
-    if (gender === "female") {
+    if (clientGender === "female") {
       const hip = parseFloat(hipCm);
       if (!hip) return null;
-      return calculateBodyFat(gender, h, n, a, hip);
+      return calculateBodyFat(clientGender, h, n, a, hip);
     }
-    return calculateBodyFat(gender, h, n, a);
+    return calculateBodyFat(clientGender, h, n, a);
   })();
 
   const sorted = [...measurements].sort((a, b) => a.date.localeCompare(b.date));
@@ -199,28 +200,6 @@ export default function AbcCalculator({ clientId }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Gender */}
-          <div className="flex gap-1">
-            <button
-              onClick={() => setGender("male")}
-              className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${
-                gender === "male" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-              }`}
-              data-testid="button-gender-male"
-            >
-              Man
-            </button>
-            <button
-              onClick={() => setGender("female")}
-              className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${
-                gender === "female" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-              }`}
-              data-testid="button-gender-female"
-            >
-              Vrouw
-            </button>
-          </div>
-
           {/* Row 1: Datum + Lengte + Gewicht (optional) */}
           <div className="grid grid-cols-3 gap-2">
             <div>

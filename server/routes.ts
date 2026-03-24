@@ -6,9 +6,9 @@ export function registerRoutes(server: Server, app: Express): void {
   // ============= CLIENTS =============
   app.get("/api/clients", (_req, res) => { res.json(storage.getClients()); });
   app.post("/api/clients", (req, res) => {
-    const { name } = req.body;
+    const { name, gender } = req.body;
     if (!name || typeof name !== "string") return res.status(400).json({ error: "Name is required" });
-    res.json(storage.createClient({ name }));
+    res.json(storage.createClient({ name, gender: gender || "male" }));
   });
   app.get("/api/clients/:id", (req, res) => {
     const client = storage.getClient(parseInt(req.params.id));

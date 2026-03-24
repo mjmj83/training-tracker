@@ -89,6 +89,7 @@ try { sqlite.exec("ALTER TABLE exercises ADD COLUMN notes TEXT DEFAULT ''"); } c
 try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN active INTEGER NOT NULL DEFAULT 1"); } catch {}
+try { sqlite.exec("ALTER TABLE clients ADD COLUMN gender TEXT NOT NULL DEFAULT 'male'"); } catch {}
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS abc_measurements (
