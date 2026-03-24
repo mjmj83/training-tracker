@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Calculator, Trash2, TrendingDown } from "lucide-react";
+import { Calculator, Trash2, TrendingDown, Ruler, Weight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +57,43 @@ function CustomTooltip({ active, payload, label }: any) {
       {d?.hipCm ? <p className="text-muted-foreground">Heup: {d.hipCm} cm</p> : null}
       {d?.weightKg ? <p className="text-muted-foreground">Gewicht: {d.weightKg} kg</p> : null}
     </div>
+  );
+}
+
+function SimpleTooltip({ active, payload, label, unit }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border px-3 py-1.5 text-xs" style={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))" }}>
+      <p className="text-muted-foreground">{label}</p>
+      <p className="font-semibold" style={{ color: payload[0]?.stroke }}>{payload[0]?.value}{unit}</p>
+    </div>
+  );
+}
+
+function MiniChart({ title, icon, data, dataKey, unit, color }: {
+  title: string; icon: React.ReactNode; data: any[]; dataKey: string; unit: string; color: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          {icon}
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} domain={["dataMin - 2", "dataMax + 2"]} />
+            <Tooltip content={<SimpleTooltip unit={unit} />} />
+            <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2}
+              dot={{ r: 3, fill: color }} activeDot={{ r: 5 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -238,29 +275,20 @@ export default function AbcCalculator({ clientId }: Props) {
         </CardContent>
       </Card>
 
-      {/* Chart */}
+      {/* Charts */}
       {chartData.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingDown className="w-4 h-4 text-primary" />
-              Vetpercentage verloop
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} domain={["dataMin - 2", "dataMax + 2"]}
-                  label={{ value: "%", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" } }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="bodyFatPct" stroke="hsl(var(--chart-1))" strokeWidth={2}
-                  dot={{ r: 4, fill: "hsl(var(--chart-1))" }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <>
+          <MiniChart title="Vetpercentage verloop" icon={<TrendingDown className="w-4 h-4 text-primary" />}
+            data={chartData} dataKey="bodyFatPct" unit="%" color="hsl(var(--chart-1))" />
+          <MiniChart title="Nekomtrek" icon={<Ruler className="w-4 h-4 text-primary" />}
+            data={chartData} dataKey="neckCm" unit=" cm" color="hsl(var(--chart-2))" />
+          <MiniChart title="Buikomtrek" icon={<Ruler className="w-4 h-4 text-primary" />}
+            data={chartData} dataKey="abdomenCm" unit=" cm" color="hsl(var(--chart-3))" />
+          {chartData.some(d => d.weightKg) && (
+            <MiniChart title="Gewicht" icon={<Weight className="w-4 h-4 text-primary" />}
+              data={chartData.filter(d => d.weightKg)} dataKey="weightKg" unit=" kg" color="hsl(var(--chart-4))" />
+          )}
+        </>
       )}
 
       {/* History */}

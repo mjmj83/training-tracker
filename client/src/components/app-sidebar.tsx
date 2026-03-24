@@ -229,7 +229,7 @@ export function AppSidebar() {
                 data-testid="button-abc"
               >
                 <Calculator className="w-3.5 h-3.5" />
-                <span>ABC Calculator</span>
+                <span>Vetpercentage</span>
               </button>
             </Link>
           </div>
