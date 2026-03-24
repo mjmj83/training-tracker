@@ -1,4 +1,4 @@
-import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen } from "lucide-react";
+import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -18,47 +18,22 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import ConfirmDialog from "@/components/confirm-dialog";
-import type { Client, Month } from "@shared/schema";
-
-const MONTH_NAMES = [
-  "Januari", "Februari", "Maart", "April", "Mei", "Juni",
-  "Juli", "Augustus", "September", "Oktober", "November", "December",
-];
+import type { Client } from "@shared/schema";
 
 export function AppSidebar() {
   const { clientId, setClientId } = useSelectedClient();
   const { monthId, setMonthId } = useSelectedMonth();
   const [location, navigate] = useLocation();
-  const [showCopyMonth, setShowCopyMonth] = useState(false);
-  const [copyTargetMonth, setCopyTargetMonth] = useState(1);
-  const [copyTargetYear, setCopyTargetYear] = useState(new Date().getFullYear());
-  const [editingMonthId, setEditingMonthId] = useState<number | null>(null);
-  const [editingMonthLabel, setEditingMonthLabel] = useState("");
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
-  const [monthPopoverOpen, setMonthPopoverOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [editingClientName, setEditingClientName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<{
-    type: "client" | "month";
     id: number;
     label: string;
   } | null>(null);
@@ -67,14 +42,7 @@ export function AppSidebar() {
     queryKey: ["/api/clients"],
   });
 
-  const { data: months = [] } = useQuery<Month[]>({
-    queryKey: ["/api/clients", clientId, "months"],
-    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/months`).then(r => r.json()),
-    enabled: !!clientId,
-  });
-
   const selectedClient = clients.find(c => c.id === clientId);
-  const selectedMonth = months.find(m => m.id === monthId);
 
   const createClient = useMutation({
     mutationFn: (name: string) => apiRequest("POST", "/api/clients", { name }),
@@ -104,65 +72,9 @@ export function AppSidebar() {
     },
   });
 
-  const createMonth = useMutation({
-    mutationFn: (data: { clientId: number; label: string; year: number; month: number }) =>
-      apiRequest("POST", "/api/months", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "months"] });
-    },
-  });
-
-  const deleteMonthMut = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/months/${id}`),
-    onSuccess: (_data, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "months"] });
-      if (monthId === deletedId) setMonthId(null);
-    },
-  });
-
-  const updateMonthLabel = useMutation({
-    mutationFn: (data: { id: number; label: string }) =>
-      apiRequest("PATCH", `/api/months/${data.id}`, { label: data.label }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "months"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
-      setEditingMonthId(null);
-    },
-  });
-
-  const copyMonth = useMutation({
-    mutationFn: (data: { monthId: number; label: string; year: number; month: number }) =>
-      apiRequest("POST", `/api/months/${data.monthId}/copy`, {
-        label: data.label,
-        year: data.year,
-        month: data.month,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "months"] });
-      setShowCopyMonth(false);
-    },
-  });
-
-  const handleAddMonth = () => {
-    if (!clientId) return;
-    const now = new Date();
-    const m = now.getMonth() + 1;
-    const y = now.getFullYear();
-    createMonth.mutate({
-      clientId,
-      label: `${MONTH_NAMES[m - 1]} ${y}`,
-      year: y,
-      month: m,
-    });
-  };
-
   const handleConfirmDelete = () => {
     if (!confirmDelete) return;
-    if (confirmDelete.type === "client") {
-      deleteClient.mutate(confirmDelete.id);
-    } else {
-      deleteMonthMut.mutate(confirmDelete.id);
-    }
+    deleteClient.mutate(confirmDelete.id);
     setConfirmDelete(null);
   };
 
@@ -243,7 +155,7 @@ export function AppSidebar() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setClientPopoverOpen(false);
-                            setConfirmDelete({ type: "client", id: client.id, label: client.name });
+                            setConfirmDelete({ id: client.id, label: client.name });
                           }}
                           className="hover:text-destructive p-0.5"
                           data-testid={`button-delete-client-${client.id}`}
@@ -288,122 +200,6 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Month Switcher */}
-        {clientId && (
-          <div className="px-4 pb-2">
-            <Popover open={monthPopoverOpen} onOpenChange={setMonthPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  className="flex items-center gap-2 w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
-                  data-testid="button-month-switcher"
-                >
-                  <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="flex-1 truncate font-medium">
-                    {selectedMonth?.label ?? "Selecteer maand..."}
-                  </span>
-                  <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-2" align="start">
-                <div className="space-y-1">
-                  {months.map((month) => (
-                    <div key={month.id} className="flex items-center group">
-                      {editingMonthId === month.id ? (
-                        <div className="flex gap-1 flex-1 px-1">
-                          <Input
-                            value={editingMonthLabel}
-                            onChange={(e) => setEditingMonthLabel(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && editingMonthLabel.trim()) {
-                                updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
-                              }
-                              if (e.key === "Escape") setEditingMonthId(null);
-                            }}
-                            onBlur={() => {
-                              if (editingMonthLabel.trim()) {
-                                updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
-                              } else {
-                                setEditingMonthId(null);
-                              }
-                            }}
-                            className="h-7 text-xs"
-                            autoFocus
-                            data-testid={`input-month-label-${month.id}`}
-                          />
-                        </div>
-                      ) : (
-                        <button
-                          className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left"
-                          onClick={() => {
-                            setMonthId(month.id);
-                            setMonthPopoverOpen(false);
-                          }}
-                          data-testid={`button-month-${month.id}`}
-                        >
-                          <Check className={`w-3.5 h-3.5 shrink-0 ${monthId === month.id ? "opacity-100 text-primary" : "opacity-0"}`} />
-                          <span className="flex-1 truncate">{month.label}</span>
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingMonthId(month.id);
-                                setEditingMonthLabel(month.label);
-                              }}
-                              className="hover:text-primary p-0.5"
-                              data-testid={`button-edit-month-${month.id}`}
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMonthPopoverOpen(false);
-                                setCopyTargetMonth(month.month < 12 ? month.month + 1 : 1);
-                                setCopyTargetYear(month.month < 12 ? month.year : month.year + 1);
-                                setShowCopyMonth(true);
-                              }}
-                              className="hover:text-primary p-0.5"
-                              data-testid={`button-copy-month-${month.id}`}
-                            >
-                              <Copy className="w-3 h-3" />
-                            </button>
-                            <button
-                              className="hover:text-destructive p-0.5"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMonthPopoverOpen(false);
-                                setConfirmDelete({ type: "month", id: month.id, label: month.label });
-                              }}
-                              data-testid={`button-delete-month-${month.id}`}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* Add new month */}
-                  <div className="border-t border-border pt-1 mt-1">
-                    <button
-                      className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                      onClick={() => {
-                        handleAddMonth();
-                        setMonthPopoverOpen(false);
-                      }}
-                      data-testid="button-add-month"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Nieuwe maand toevoegen</span>
-                    </button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
-
         {/* Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel>Navigatie</SidebarGroupLabel>
@@ -438,56 +234,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      {/* Copy Month Dialog */}
-      {showCopyMonth && monthId && (
-        <Dialog open={showCopyMonth} onOpenChange={setShowCopyMonth}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Maand kopiëren</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-2">
-                <Select
-                  value={String(copyTargetMonth)}
-                  onValueChange={(v) => setCopyTargetMonth(parseInt(v))}
-                >
-                  <SelectTrigger data-testid="select-copy-month">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONTH_NAMES.map((name, i) => (
-                      <SelectItem key={i + 1} value={String(i + 1)}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  value={copyTargetYear}
-                  onChange={(e) => setCopyTargetYear(parseInt(e.target.value))}
-                  className="w-24"
-                  data-testid="input-copy-year"
-                />
-              </div>
-              <Button
-                onClick={() => {
-                  copyMonth.mutate({
-                    monthId,
-                    label: `${MONTH_NAMES[copyTargetMonth - 1]} ${copyTargetYear}`,
-                    year: copyTargetYear,
-                    month: copyTargetMonth,
-                  });
-                }}
-                data-testid="button-confirm-copy"
-              >
-                Kopiëren
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Confirm Delete Dialog */}
       <ConfirmDialog
