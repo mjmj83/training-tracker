@@ -1,4 +1,4 @@
-import { useSelectedClient, useSelectedMonth } from "@/lib/state";
+import { useSelectedClient } from "@/lib/state";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useRoute } from "wouter";
@@ -49,36 +49,85 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
+/** Build chart data points from an array of FullMonthData blocks */
+export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; data: any[] }[] {
+  const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; source: string; sortDate: string }[]>();
+
+  for (const block of blocks) {
+    const weekCount = block.month?.weekCount ?? 4;
+    const blockLabel = block.month?.label ?? "";
+
+    for (const day of block.trainingDays) {
+      for (const ex of day.exercises) {
+        if (ex.weightLogs.length === 0) continue;
+
+        for (let w = 1; w <= weekCount; w++) {
+          const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
+          if (weekLogs.length === 0) continue;
+
+          const lastSet = weekLogs.reduce((best, l) =>
+            l.setNumber > best.setNumber ? l : best
+          , weekLogs[0]);
+
+          const weekDate = block.weekDates.find(
+            (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
+          );
+
+          const dateStr = weekDate?.date || block.month?.startDate || "";
+          const label = dateStr
+            ? new Date(dateStr).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
+            : `${blockLabel} ${day.name} W${w}`;
+
+          if (!exerciseMap.has(ex.name)) exerciseMap.set(ex.name, []);
+          exerciseMap.get(ex.name)!.push({
+            week: label,
+            lastSetWeight: lastSet.weight ?? 0,
+            lastSetReps: lastSet.reps,
+            source: `${blockLabel} · ${day.name} W${w}`,
+            sortDate: dateStr || `${block.month?.startDate || "9999"}-${day.sortOrder}-${w}`,
+          });
+        }
+      }
+    }
+  }
+
+  const charts: { name: string; data: any[] }[] = [];
+  for (const [name, points] of exerciseMap) {
+    const sorted = points.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+    charts.push({ name, data: sorted });
+  }
+  return charts;
+}
+
 export default function ChartsPage() {
   const { clientId } = useSelectedClient();
-  const { monthId } = useSelectedMonth();
 
   const [, params] = useRoute("/charts/:exerciseName");
   const highlightName = params?.exerciseName ? decodeURIComponent(params.exerciseName) : null;
   const highlightRef = useRef<HTMLDivElement>(null);
 
-  const { data } = useQuery<FullMonthData>({
-    queryKey: ["/api/months", monthId, "full"],
-    queryFn: () => apiRequest("GET", `/api/months/${monthId}/full`).then((r) => r.json()),
-    enabled: !!monthId,
+  const { data: blocks } = useQuery<FullMonthData[]>({
+    queryKey: ["/api/clients", clientId, "all-blocks"],
+    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/all-blocks`).then((r) => r.json()),
+    enabled: !!clientId,
   });
 
   useEffect(() => {
     if (highlightRef.current) {
       highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [data, highlightName]);
+  }, [blocks, highlightName]);
 
-  if (!clientId || !monthId) {
+  if (!clientId) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
         <BarChart3 className="w-10 h-10 opacity-30" />
-        <p className="text-sm">Selecteer een klant en maand om charts te bekijken</p>
+        <p className="text-sm">Selecteer een klant om charts te bekijken</p>
       </div>
     );
   }
 
-  if (!data) {
+  if (!blocks) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-pulse text-muted-foreground text-sm">Laden...</div>
@@ -86,50 +135,7 @@ export default function ChartsPage() {
     );
   }
 
-  const weekCount = data.month?.weekCount ?? 4;
-
-  // Collect all data points grouped by exercise NAME (not by day)
-  const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; source: string; sortDate: string }[]>();
-
-  for (const day of data.trainingDays) {
-    for (const ex of day.exercises) {
-      if (ex.weightLogs.length === 0) continue;
-
-      for (let w = 1; w <= weekCount; w++) {
-        const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
-        if (weekLogs.length === 0) continue;
-
-        const lastSet = weekLogs.reduce((best, l) =>
-          l.setNumber > best.setNumber ? l : best
-        , weekLogs[0]);
-
-        const weekDate = data.weekDates.find(
-          (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
-        );
-
-        const dateStr = weekDate?.date || "";
-        const label = dateStr
-          ? new Date(dateStr).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
-          : `${day.name} W${w}`;
-
-        if (!exerciseMap.has(ex.name)) exerciseMap.set(ex.name, []);
-        exerciseMap.get(ex.name)!.push({
-          week: label,
-          lastSetWeight: lastSet.weight ?? 0,
-          lastSetReps: lastSet.reps,
-          source: `${day.name} W${w}`,
-          sortDate: dateStr || `${day.sortOrder}-${w}`,
-        });
-      }
-    }
-  }
-
-  // Build chart data sorted by date
-  const exerciseCharts: { name: string; data: any[] }[] = [];
-  for (const [name, points] of exerciseMap) {
-    const sorted = points.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
-    exerciseCharts.push({ name, data: sorted });
-  }
+  const exerciseCharts = buildExerciseCharts(blocks);
 
   if (exerciseCharts.length === 0) {
     return (

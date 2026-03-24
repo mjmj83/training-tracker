@@ -204,11 +204,9 @@ export default function MonthSwitcher() {
                   <Check className={`w-3.5 h-3.5 shrink-0 ${monthId === month.id ? "opacity-100 text-primary" : "opacity-0"}`} />
                   <div className="flex-1 min-w-0">
                     <div className="truncate">{month.label}</div>
-                    {month.startDate && (
-                      <div className="text-[10px] text-muted-foreground">
-                        {formatDate(month.startDate)} · {month.weekCount} weken
-                      </div>
-                    )}
+                    <div className="text-[10px] text-muted-foreground">
+                      {month.startDate ? formatDate(month.startDate) : `${month.year}`} · {month.weekCount} weken
+                    </div>
                   </div>
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button

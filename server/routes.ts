@@ -179,6 +179,14 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json(data);
   });
 
+  // All blocks for a client (for cross-block charts)
+  app.get("/api/clients/:clientId/all-blocks", (req, res) => {
+    const clientId = parseInt(req.params.clientId);
+    const allMonths = storage.getMonthsByClient(clientId);
+    const blocks = allMonths.map(m => storage.getFullMonthData(m.id));
+    res.json(blocks);
+  });
+
   // ============= SNAPSHOTS / SAVE STATE =============
   app.get("/api/months/:monthId/snapshots", (req, res) => {
     res.json(storage.getSnapshotsByMonth(parseInt(req.params.monthId)));

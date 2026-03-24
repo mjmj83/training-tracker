@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useSelectedMonth } from "@/lib/state";
+import { useSelectedClient } from "@/lib/state";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { buildExerciseCharts } from "@/pages/charts";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 
 interface FullMonthData {
@@ -58,54 +59,20 @@ interface Props {
 }
 
 export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }: Props) {
-  const { monthId } = useSelectedMonth();
+  const { clientId } = useSelectedClient();
 
-  const { data } = useQuery<FullMonthData>({
-    queryKey: ["/api/months", monthId, "full"],
-    queryFn: () => apiRequest("GET", `/api/months/${monthId}/full`).then((r) => r.json()),
-    enabled: !!monthId && open,
+  const { data: blocks } = useQuery<FullMonthData[]>({
+    queryKey: ["/api/clients", clientId, "all-blocks"],
+    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/all-blocks`).then((r) => r.json()),
+    enabled: !!clientId && open,
   });
 
-  // Build chart data for this specific exercise
+  // Find chart data for this specific exercise across all blocks
   const chartData = (() => {
-    if (!data || !exerciseName) return [];
-
-    const weekCount = data.month?.weekCount ?? 4;
-    const points: { week: string; lastSetWeight: number; lastSetReps: number | null; source: string; sortDate: string }[] = [];
-
-    for (const day of data.trainingDays) {
-      for (const ex of day.exercises) {
-        if (ex.name !== exerciseName || ex.weightLogs.length === 0) continue;
-
-        for (let w = 1; w <= weekCount; w++) {
-          const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
-          if (weekLogs.length === 0) continue;
-
-          const lastSet = weekLogs.reduce((best, l) =>
-            l.setNumber > best.setNumber ? l : best
-          , weekLogs[0]);
-
-          const weekDate = data.weekDates.find(
-            (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
-          );
-
-          const dateStr = weekDate?.date || "";
-          const label = dateStr
-            ? new Date(dateStr).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
-            : `${day.name} W${w}`;
-
-          points.push({
-            week: label,
-            lastSetWeight: lastSet.weight ?? 0,
-            lastSetReps: lastSet.reps,
-            source: `${day.name} W${w}`,
-            sortDate: dateStr || `${day.sortOrder}-${w}`,
-          });
-        }
-      }
-    }
-
-    return points.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+    if (!blocks || !exerciseName) return [];
+    const allCharts = buildExerciseCharts(blocks);
+    const match = allCharts.find(c => c.name === exerciseName);
+    return match?.data ?? [];
   })();
 
   return (
