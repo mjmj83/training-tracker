@@ -52,6 +52,7 @@ export function AppSidebar() {
   const [editingMonthId, setEditingMonthId] = useState<number | null>(null);
   const [editingMonthLabel, setEditingMonthLabel] = useState("");
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [monthPopoverOpen, setMonthPopoverOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [editingClientName, setEditingClientName] = useState("");
@@ -72,6 +73,7 @@ export function AppSidebar() {
   });
 
   const selectedClient = clients.find(c => c.id === clientId);
+  const selectedMonth = months.find(m => m.id === monthId);
 
   const createClient = useMutation({
     mutationFn: (name: string) => apiRequest("POST", "/api/clients", { name }),
@@ -285,97 +287,120 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Months */}
+        {/* Month Switcher */}
         {clientId && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center justify-between">
-              <span>Maanden</span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-5 w-5"
-                onClick={handleAddMonth}
-                data-testid="button-add-month"
-              >
-                <Plus className="w-3 h-3" />
-              </Button>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {months.map((month) => (
-                  <SidebarMenuItem key={month.id}>
-                    <SidebarMenuButton
-                      isActive={monthId === month.id}
-                      onClick={() => setMonthId(month.id)}
-                      data-testid={`button-month-${month.id}`}
-                    >
-                      <Calendar className="w-4 h-4" />
+          <div className="px-4 pb-2">
+            <Popover open={monthPopoverOpen} onOpenChange={setMonthPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex items-center gap-2 w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                  data-testid="button-month-switcher"
+                >
+                  <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 truncate font-medium">
+                    {selectedMonth?.label ?? "Selecteer maand..."}
+                  </span>
+                  <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[240px] p-2" align="start">
+                <div className="space-y-1">
+                  {months.map((month) => (
+                    <div key={month.id} className="flex items-center group">
                       {editingMonthId === month.id ? (
-                        <input
-                          value={editingMonthLabel}
-                          onChange={(e) => setEditingMonthLabel(e.target.value)}
-                          onBlur={() => {
-                            if (editingMonthLabel.trim()) {
-                              updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
-                            } else {
-                              setEditingMonthId(null);
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && editingMonthLabel.trim()) {
-                              updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
-                            }
-                            if (e.key === "Escape") setEditingMonthId(null);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex-1 bg-transparent border-none outline-none text-sm focus:ring-0"
-                          autoFocus
-                          data-testid={`input-month-label-${month.id}`}
-                        />
+                        <div className="flex gap-1 flex-1 px-1">
+                          <Input
+                            value={editingMonthLabel}
+                            onChange={(e) => setEditingMonthLabel(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && editingMonthLabel.trim()) {
+                                updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
+                              }
+                              if (e.key === "Escape") setEditingMonthId(null);
+                            }}
+                            onBlur={() => {
+                              if (editingMonthLabel.trim()) {
+                                updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
+                              } else {
+                                setEditingMonthId(null);
+                              }
+                            }}
+                            className="h-7 text-xs"
+                            autoFocus
+                            data-testid={`input-month-label-${month.id}`}
+                          />
+                        </div>
                       ) : (
-                        <span className="flex-1 truncate">{month.label}</span>
+                        <button
+                          className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                          onClick={() => {
+                            setMonthId(month.id);
+                            setMonthPopoverOpen(false);
+                          }}
+                          data-testid={`button-month-${month.id}`}
+                        >
+                          <Check className={`w-3.5 h-3.5 shrink-0 ${monthId === month.id ? "opacity-100 text-primary" : "opacity-0"}`} />
+                          <span className="flex-1 truncate">{month.label}</span>
+                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingMonthId(month.id);
+                                setEditingMonthLabel(month.label);
+                              }}
+                              className="hover:text-primary p-0.5"
+                              data-testid={`button-edit-month-${month.id}`}
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMonthPopoverOpen(false);
+                                setCopyTargetMonth(month.month < 12 ? month.month + 1 : 1);
+                                setCopyTargetYear(month.month < 12 ? month.year : month.year + 1);
+                                setShowCopyMonth(true);
+                              }}
+                              className="hover:text-primary p-0.5"
+                              data-testid={`button-copy-month-${month.id}`}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                            <button
+                              className="hover:text-destructive p-0.5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMonthPopoverOpen(false);
+                                setConfirmDelete({ type: "month", id: month.id, label: month.label });
+                              }}
+                              data-testid={`button-delete-month-${month.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </button>
                       )}
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingMonthId(month.id);
-                            setEditingMonthLabel(month.label);
-                          }}
-                          className="hover:text-primary"
-                          data-testid={`button-edit-month-${month.id}`}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCopyTargetMonth(month.month < 12 ? month.month + 1 : 1);
-                            setCopyTargetYear(month.month < 12 ? month.year : month.year + 1);
-                            setShowCopyMonth(true);
-                          }}
-                          className="hover:text-primary"
-                          data-testid={`button-copy-month-${month.id}`}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                        <button
-                          className="hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmDelete({ type: "month", id: month.id, label: month.label });
-                          }}
-                          data-testid={`button-delete-month-${month.id}`}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                    </div>
+                  ))}
+
+                  {/* Add new month */}
+                  <div className="border-t border-border pt-1 mt-1">
+                    <button
+                      className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                      onClick={() => {
+                        handleAddMonth();
+                        setMonthPopoverOpen(false);
+                      }}
+                      data-testid="button-add-month"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Nieuwe maand toevoegen</span>
+                    </button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         )}
 
         {/* Navigation */}
