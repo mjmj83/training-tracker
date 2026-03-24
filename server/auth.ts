@@ -13,8 +13,10 @@ import { SqliteStorage } from "./storage";
 function getRpConfig(req: Request) {
   const host = req.headers.host || "localhost:5000";
   const rpID = host.split(":")[0];
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const proto = req.headers["x-forwarded-proto"];
+  const protocol = (Array.isArray(proto) ? proto[0] : proto) || req.protocol || "http";
   const origin = `${protocol}://${host}`;
+  console.log(`[rpConfig] host=${host} rpID=${rpID} origin=${origin}`);
   return { rpName: "Training Tracker", rpID, origin };
 }
 
@@ -166,9 +168,15 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
       if (!session || !session.challenge) return res.status(400).json({ error: "Invalid or expired session" });
 
       const credential = storage.getCredentialByCredentialId(response.id);
-      if (!credential) return res.status(400).json({ error: "Unknown credential" });
+      if (!credential) {
+        console.error("Unknown credential ID:", response.id);
+        const allCreds = storage.getUsers().flatMap(u => storage.getCredentialsByUserId(u.id));
+        console.error("Known credentials:", allCreds.map(c => c.credentialId));
+        return res.status(400).json({ error: "Onbekende passkey. Mogelijk is je passkey verlopen of verwijderd. Log in met PIN en registreer opnieuw." });
+      }
 
       const { rpID, origin } = getRpConfig(req);
+      console.log("Auth verify - rpID:", rpID, "origin:", origin);
 
       const verification = await verifyAuthenticationResponse({
         response,
