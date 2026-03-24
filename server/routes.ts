@@ -148,6 +148,19 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json({ ok: true });
   });
 
+  // ============= ABC MEASUREMENTS =============
+  app.get("/api/clients/:clientId/abc", (req, res) => {
+    res.json(storage.getAbcMeasurements(parseInt(req.params.clientId)));
+  });
+  app.post("/api/abc", (req, res) => {
+    const { clientId, date, gender, weightKg, abdomenCm, bodyFatPct } = req.body;
+    res.json(storage.createAbcMeasurement({ clientId, date, gender, weightKg, abdomenCm, bodyFatPct }));
+  });
+  app.delete("/api/abc/:id", (req, res) => {
+    storage.deleteAbcMeasurement(parseInt(req.params.id));
+    res.json({ ok: true });
+  });
+
   // ============= FULL MONTH DATA =============
   app.get("/api/months/:monthId/full", (req, res) => {
     const monthId = parseInt(req.params.monthId);

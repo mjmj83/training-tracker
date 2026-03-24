@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import { eq, and, like } from "drizzle-orm";
 import {
   clients, type Client, type InsertClient,
+  abcMeasurements, type AbcMeasurement, type InsertAbcMeasurement,
   months, type Month, type InsertMonth,
   trainingDays, type TrainingDay, type InsertTrainingDay,
   exercises, type Exercise, type InsertExercise,
@@ -88,6 +89,18 @@ try { sqlite.exec("ALTER TABLE exercises ADD COLUMN notes TEXT DEFAULT ''"); } c
 try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN active INTEGER NOT NULL DEFAULT 1"); } catch {}
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS abc_measurements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL REFERENCES clients(id),
+    date TEXT NOT NULL,
+    gender TEXT NOT NULL,
+    weight_kg REAL NOT NULL,
+    abdomen_cm REAL NOT NULL,
+    body_fat_pct REAL NOT NULL
+  );
+`);
 
 export class SqliteStorage {
   // Clients
@@ -266,6 +279,17 @@ export class SqliteStorage {
   }
   deleteExerciseFromLibrary(id: number): void {
     db.delete(exerciseLibrary).where(eq(exerciseLibrary.id, id)).run();
+  }
+
+  // ABC Measurements
+  getAbcMeasurements(clientId: number): AbcMeasurement[] {
+    return db.select().from(abcMeasurements).where(eq(abcMeasurements.clientId, clientId)).all();
+  }
+  createAbcMeasurement(data: InsertAbcMeasurement): AbcMeasurement {
+    return db.insert(abcMeasurements).values(data).returning().get();
+  }
+  deleteAbcMeasurement(id: number): void {
+    db.delete(abcMeasurements).where(eq(abcMeasurements.id, id)).run();
   }
 
   // Snapshots (for save state)

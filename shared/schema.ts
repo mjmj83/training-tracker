@@ -97,6 +97,21 @@ export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).o
 export type InsertExerciseLibrary = z.infer<typeof insertExerciseLibrarySchema>;
 export type ExerciseLibrary = typeof exerciseLibrary.$inferSelect;
 
+// ABC (Army Body Composition) measurements
+export const abcMeasurements = sqliteTable("abc_measurements", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  date: text("date").notNull(), // ISO date
+  gender: text("gender").notNull(), // 'male' | 'female'
+  weightKg: real("weight_kg").notNull(),
+  abdomenCm: real("abdomen_cm").notNull(), // waist at belly button
+  bodyFatPct: real("body_fat_pct").notNull(), // calculated result
+});
+
+export const insertAbcMeasurementSchema = createInsertSchema(abcMeasurements).omit({ id: true });
+export type InsertAbcMeasurement = z.infer<typeof insertAbcMeasurementSchema>;
+export type AbcMeasurement = typeof abcMeasurements.$inferSelect;
+
 // Snapshots for undo/redo — stores full month state as JSON
 export const snapshots = sqliteTable("snapshots", {
   id: integer("id").primaryKey({ autoIncrement: true }),

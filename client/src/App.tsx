@@ -10,6 +10,7 @@ import TrainingPage from "@/pages/training";
 import ChartsPage from "@/pages/charts";
 import NotesPage from "@/pages/notes";
 import SettingsPage from "@/pages/settings";
+import AbcPage from "@/pages/abc";
 import NotFound from "@/pages/not-found";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 import { useState } from "react";
@@ -20,6 +21,7 @@ function AppRouter() {
       <Route path="/" component={TrainingPage} />
       <Route path="/notes" component={NotesPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/abc" component={AbcPage} />
       <Route path="/charts" component={ChartsPage} />
       <Route path="/charts/:exerciseName" component={ChartsPage} />
       <Route component={NotFound} />

@@ -1,4 +1,4 @@
-import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings } from "lucide-react";
+import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -203,21 +203,36 @@ export function AppSidebar() {
           </PopoverContent>
         </Popover>
 
-        {/* Notities link — directly under client */}
+        {/* Client sub-links */}
         {clientId && (
-          <Link href="/notes">
-            <button
-              className={`flex items-center gap-2 w-full rounded-md px-3 py-1.5 mt-1.5 text-xs transition-colors ${
-                location === "/notes"
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              }`}
-              data-testid="button-notes"
-            >
-              <NotebookPen className="w-3.5 h-3.5" />
-              <span>Klantnotities</span>
-            </button>
-          </Link>
+          <div className="space-y-0.5 mt-1.5">
+            <Link href="/notes">
+              <button
+                className={`flex items-center gap-2 w-full rounded-md px-3 py-1.5 text-xs transition-colors ${
+                  location === "/notes"
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                }`}
+                data-testid="button-notes"
+              >
+                <NotebookPen className="w-3.5 h-3.5" />
+                <span>Klantnotities</span>
+              </button>
+            </Link>
+            <Link href="/abc">
+              <button
+                className={`flex items-center gap-2 w-full rounded-md px-3 py-1.5 text-xs transition-colors ${
+                  location === "/abc"
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                }`}
+                data-testid="button-abc"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>ABC Calculator</span>
+              </button>
+            </Link>
+          </div>
         )}
       </SidebarHeader>
 
