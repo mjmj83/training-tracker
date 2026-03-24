@@ -11,26 +11,43 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 
 interface FullMonthData {
+  month: Month;
   trainingDays: (TrainingDay & {
     exercises: (Exercise & { weightLogs: WeightLog[] })[];
   })[];
   weekDates: WeekDate[];
 }
 
+// Custom tooltip to show weight + reps on hover
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0]?.payload;
+  return (
+    <div
+      className="rounded-md border px-3 py-2 text-xs"
+      style={{
+        backgroundColor: "hsl(var(--popover))",
+        borderColor: "hsl(var(--border))",
+      }}
+    >
+      <p className="font-medium mb-1">{label}</p>
+      <p style={{ color: "hsl(var(--chart-1))" }}>
+        Gewicht: <span className="font-semibold">{data?.lastSetWeight ?? "—"} kg</span>
+      </p>
+      <p style={{ color: "hsl(var(--muted-foreground))" }}>
+        Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+      </p>
+    </div>
+  );
+}
+
 export default function ChartsPage() {
   const { clientId } = useSelectedClient();
   const { monthId } = useSelectedMonth();
-
-  const { data: months = [] } = useQuery<Month[]>({
-    queryKey: ["/api/clients", clientId, "months"],
-    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/months`).then((r) => r.json()),
-    enabled: !!clientId,
-  });
 
   const { data } = useQuery<FullMonthData>({
     queryKey: ["/api/months", monthId, "full"],
@@ -55,41 +72,45 @@ export default function ChartsPage() {
     );
   }
 
-  // Collect all exercises with weight data
+  const weekCount = data.month?.weekCount ?? 4;
+
+  // Build chart data: last set weight per week for each exercise
   const exerciseCharts: {
     name: string;
-    data: { week: string; maxWeight: number; totalVolume: number }[];
+    day: string;
+    data: { week: string; lastSetWeight: number; lastSetReps: number | null }[];
   }[] = [];
 
   for (const day of data.trainingDays) {
     for (const ex of day.exercises) {
       if (ex.weightLogs.length === 0) continue;
 
-      const weekData: { week: string; maxWeight: number; totalVolume: number }[] = [];
+      const weekData: { week: string; lastSetWeight: number; lastSetReps: number | null }[] = [];
 
-      for (let w = 1; w <= 4; w++) {
+      for (let w = 1; w <= weekCount; w++) {
         const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
         if (weekLogs.length === 0) continue;
 
-        const maxWeight = Math.max(...weekLogs.map((l) => l.weight ?? 0));
-        const totalVolume = weekLogs.reduce(
-          (acc, l) => acc + (l.weight ?? 0) * (l.reps ?? 0),
-          0
-        );
+        // Get the last set (highest set number)
+        const lastSet = weekLogs.reduce((best, l) =>
+          l.setNumber > best.setNumber ? l : best
+        , weekLogs[0]);
 
         const weekDate = data.weekDates.find(
           (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
         );
 
         weekData.push({
-          week: weekDate?.date ? new Date(weekDate.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) : `W${w}`,
-          maxWeight,
-          totalVolume,
+          week: weekDate?.date
+            ? new Date(weekDate.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
+            : `W${w}`,
+          lastSetWeight: lastSet.weight ?? 0,
+          lastSetReps: lastSet.reps,
         });
       }
 
       if (weekData.length > 0) {
-        exerciseCharts.push({ name: ex.name, data: weekData });
+        exerciseCharts.push({ name: ex.name, day: day.name, data: weekData });
       }
     }
   }
@@ -109,10 +130,13 @@ export default function ChartsPage() {
         Progressie overzicht
       </h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {exerciseCharts.map((chart) => (
-          <Card key={chart.name} data-testid={`chart-${chart.name}`}>
+        {exerciseCharts.map((chart, i) => (
+          <Card key={`${chart.name}-${i}`} data-testid={`chart-${chart.name}`}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{chart.name}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {chart.name}
+                <span className="text-muted-foreground font-normal ml-2 text-xs">{chart.day}</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
@@ -123,8 +147,8 @@ export default function ChartsPage() {
                     tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   />
                   <YAxis
-                    yAxisId="weight"
                     tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    domain={["dataMin - 5", "dataMax + 5"]}
                     label={{
                       value: "kg",
                       angle: -90,
@@ -132,43 +156,15 @@ export default function ChartsPage() {
                       style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
                     }}
                   />
-                  <YAxis
-                    yAxisId="volume"
-                    orientation="right"
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    label={{
-                      value: "vol",
-                      angle: 90,
-                      position: "insideRight",
-                      style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "6px",
-                      fontSize: 12,
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Tooltip content={<CustomTooltip />} />
                   <Line
-                    yAxisId="weight"
                     type="monotone"
-                    dataKey="maxWeight"
+                    dataKey="lastSetWeight"
                     stroke="hsl(var(--chart-1))"
                     strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name="Max gewicht (kg)"
-                  />
-                  <Line
-                    yAxisId="volume"
-                    type="monotone"
-                    dataKey="totalVolume"
-                    stroke="hsl(var(--chart-2))"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name="Volume (kg × reps)"
+                    dot={{ r: 4, fill: "hsl(var(--chart-1))" }}
+                    activeDot={{ r: 6 }}
+                    name="Laatste set (kg)"
                   />
                 </LineChart>
               </ResponsiveContainer>
