@@ -59,10 +59,10 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json(storage.getExercisesByTrainingDay(parseInt(req.params.dayId)));
   });
   app.post("/api/exercises", (req, res) => {
-    const { trainingDayId, name, sets, goalReps, tempo, rest, supersetGroupId, sortOrder } = req.body;
+    const { trainingDayId, name, sets, goalReps, tempo, rest, notes, supersetGroupId, sortOrder } = req.body;
     res.json(storage.createExercise({
       trainingDayId, name, sets: sets ?? 3, goalReps: goalReps ?? 10,
-      tempo: tempo ?? "", rest: rest ?? 60, supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
+      tempo: tempo ?? "", rest: rest ?? 60, notes: notes ?? "", supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
     }));
   });
   app.patch("/api/exercises/:id", (req, res) => {

@@ -1,8 +1,11 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, GripVertical, Unlink } from "lucide-react";
+import { Trash2, GripVertical, Unlink, MessageCircleWarning } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import WeightCell from "@/components/weight-cell";
 import ConfirmDialog from "@/components/confirm-dialog";
 import type { Exercise, WeightLog } from "@shared/schema";
@@ -33,7 +36,10 @@ export default function ExerciseRow({
   const [goalReps, setGoalReps] = useState(exercise.goalReps);
   const [tempo, setTempo] = useState(exercise.tempo ?? "");
   const [rest, setRest] = useState(exercise.rest ?? 60);
+  const [notes, setNotes] = useState(exercise.notes ?? "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
+  const [editingNotes, setEditingNotes] = useState("");
 
   const updateExercise = useMutation({
     mutationFn: (data: Partial<Exercise>) =>
@@ -72,6 +78,7 @@ export default function ExerciseRow({
   };
 
   const weeks = Array.from({ length: weekCount }, (_, i) => i + 1);
+  const hasNotes = notes && notes.trim().length > 0;
 
   // Superset styling
   let supersetClass = "";
@@ -97,20 +104,57 @@ export default function ExerciseRow({
       onDrop={(e) => { e.preventDefault(); onDrop(); }}
       data-testid={`exercise-row-${exercise.id}`}
     >
-      {/* Drag handle + Exercise Name */}
+      {/* Drag handle + Exercise Name + Notes */}
       <td className="py-1 px-2">
         <div className="flex items-center gap-1">
           <GripVertical className="w-3 h-3 text-muted-foreground/40 cursor-grab shrink-0" />
           {isSuperset && (
             <span className="text-[9px] text-primary font-bold shrink-0 mr-0.5">SS</span>
           )}
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => handleBlur("name", name)}
-            className="w-full bg-transparent border-none outline-none text-xs font-medium"
-            data-testid={`input-exercise-name-${exercise.id}`}
-          />
+          <div className="flex-1 min-w-0">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => handleBlur("name", name)}
+              className="w-full bg-transparent border-none outline-none text-xs font-medium"
+              data-testid={`input-exercise-name-${exercise.id}`}
+            />
+            {/* Personal notes under the name — truncated with tooltip on hover */}
+            {hasNotes && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-[10px] text-muted-foreground truncate max-w-[180px] cursor-default leading-tight">
+                    {notes}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-wrap">
+                  {notes}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+          {/* Notes alert icon — tooltip shows notes, click opens edit */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  setEditingNotes(notes);
+                  setShowNotesDialog(true);
+                }}
+                className={`shrink-0 transition-opacity ${
+                  hasNotes
+                    ? "text-primary opacity-100"
+                    : "text-muted-foreground/40 opacity-0 group-hover:opacity-100"
+                }`}
+                data-testid={`button-notes-${exercise.id}`}
+              >
+                <MessageCircleWarning className="w-3.5 h-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs text-xs">
+              {hasNotes ? notes : "Opmerking toevoegen"}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </td>
 
@@ -216,6 +260,42 @@ export default function ExerciseRow({
             setShowDeleteConfirm(false);
           }}
         />
+        {/* Notes Dialog */}
+        <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-sm">Opmerking — {exercise.name}</DialogTitle>
+            </DialogHeader>
+            <Textarea
+              value={editingNotes}
+              onChange={(e) => setEditingNotes(e.target.value)}
+              placeholder="Bijv. 'Let op de houding van de bovenrug'"
+              className="min-h-[80px] text-sm"
+              data-testid={`textarea-notes-${exercise.id}`}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowNotesDialog(false)}
+              >
+                Annuleren
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  onBeforeChange();
+                  setNotes(editingNotes);
+                  updateExercise.mutate({ notes: editingNotes });
+                  setShowNotesDialog(false);
+                }}
+                data-testid={`button-save-notes-${exercise.id}`}
+              >
+                Opslaan
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </td>
     </tr>
   );

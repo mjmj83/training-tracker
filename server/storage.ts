@@ -47,6 +47,7 @@ sqlite.exec(`
     goal_reps INTEGER NOT NULL DEFAULT 10,
     tempo TEXT DEFAULT '',
     rest INTEGER DEFAULT 60,
+    notes TEXT DEFAULT '',
     superset_group_id INTEGER,
     sort_order INTEGER NOT NULL DEFAULT 0
   );
@@ -80,6 +81,7 @@ sqlite.exec(`
 // Migrations for existing DBs
 try { sqlite.exec("ALTER TABLE months ADD COLUMN week_count INTEGER NOT NULL DEFAULT 4"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN superset_group_id INTEGER"); } catch {}
+try { sqlite.exec("ALTER TABLE exercises ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 
 export class SqliteStorage {
   // Clients
@@ -136,7 +138,7 @@ export class SqliteStorage {
       for (const ex of exs) {
         db.insert(exercises).values({
           trainingDayId: newDay.id, name: ex.name, sets: ex.sets, goalReps: ex.goalReps,
-          tempo: ex.tempo, rest: ex.rest, supersetGroupId: ex.supersetGroupId, sortOrder: ex.sortOrder,
+          tempo: ex.tempo, rest: ex.rest, notes: ex.notes, supersetGroupId: ex.supersetGroupId, sortOrder: ex.sortOrder,
         }).run();
       }
     }
@@ -278,7 +280,7 @@ export class SqliteStorage {
         const newEx = db.insert(exercises).values({
           trainingDayId: newDay.id, name: exData.name, sets: exData.sets,
           goalReps: exData.goalReps, tempo: exData.tempo, rest: exData.rest,
-          supersetGroupId: exData.supersetGroupId, sortOrder: exData.sortOrder,
+          notes: exData.notes || "", supersetGroupId: exData.supersetGroupId, sortOrder: exData.sortOrder,
         }).returning().get();
         for (const log of exData.weightLogs || []) {
           db.insert(weightLogs).values({
