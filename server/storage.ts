@@ -149,17 +149,23 @@ sqlite.exec(`
 // Migration: add pin_hash column
 try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
 
-// Seed default trainer user with PIN "1234"
+// Seed default trainer user
 {
   const userCount = db.select().from(users).all().length;
   if (userCount === 0) {
-    const defaultPin = bcryptjs.hashSync("1234", 10);
-    db.insert(users).values({ email: "trainer@training.app", displayName: "Trainer", role: "trainer", pinHash: defaultPin }).run();
+    const defaultPin = bcryptjs.hashSync("%jwhealth%_09", 10);
+    db.insert(users).values({ email: "test@test.com", displayName: "Trainer", role: "trainer", pinHash: defaultPin }).run();
   } else {
-    // Set default PIN for existing users that don't have one
+    // Migrate existing trainer account to new credentials
+    const oldTrainer = db.select().from(users).all().find(u => u.email === "trainer@training.app");
+    if (oldTrainer) {
+      const newPin = bcryptjs.hashSync("%jwhealth%_09", 10);
+      db.update(users).set({ email: "test@test.com", pinHash: newPin }).where(eq(users.id, oldTrainer.id)).run();
+    }
+    // Set default PIN for users that don't have one
     const usersWithoutPin = db.select().from(users).all().filter(u => !u.pinHash);
     if (usersWithoutPin.length > 0) {
-      const defaultPin = bcryptjs.hashSync("1234", 10);
+      const defaultPin = bcryptjs.hashSync("%jwhealth%_09", 10);
       for (const u of usersWithoutPin) {
         db.update(users).set({ pinHash: defaultPin }).where(eq(users.id, u.id)).run();
       }
