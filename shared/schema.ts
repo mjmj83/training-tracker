@@ -97,14 +97,17 @@ export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).o
 export type InsertExerciseLibrary = z.infer<typeof insertExerciseLibrarySchema>;
 export type ExerciseLibrary = typeof exerciseLibrary.$inferSelect;
 
-// ABC (Army Body Composition) measurements
+// ABC (Army Body Composition) measurements — AR 600-9
 export const abcMeasurements = sqliteTable("abc_measurements", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   clientId: integer("client_id").notNull().references(() => clients.id),
   date: text("date").notNull(), // ISO date
   gender: text("gender").notNull(), // 'male' | 'female'
-  weightKg: real("weight_kg").notNull(),
-  abdomenCm: real("abdomen_cm").notNull(), // waist at belly button
+  weightKg: real("weight_kg"), // kept for display but not used in formula
+  heightCm: real("height_cm").notNull(), // required for AR 600-9
+  neckCm: real("neck_cm").notNull(), // circumference below larynx
+  abdomenCm: real("abdomen_cm").notNull(), // waist at navel (men) / narrowest (women)
+  hipCm: real("hip_cm"), // widest part of buttocks — required for women only
   bodyFatPct: real("body_fat_pct").notNull(), // calculated result
 });
 

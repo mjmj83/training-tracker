@@ -96,11 +96,20 @@ sqlite.exec(`
     client_id INTEGER NOT NULL REFERENCES clients(id),
     date TEXT NOT NULL,
     gender TEXT NOT NULL,
-    weight_kg REAL NOT NULL,
+    weight_kg REAL,
+    height_cm REAL NOT NULL DEFAULT 170,
+    neck_cm REAL NOT NULL DEFAULT 38,
     abdomen_cm REAL NOT NULL,
+    hip_cm REAL,
     body_fat_pct REAL NOT NULL
   );
 `);
+// Migrations for abc_measurements new columns
+try { sqlite.exec("ALTER TABLE abc_measurements ADD COLUMN height_cm REAL NOT NULL DEFAULT 170"); } catch {}
+try { sqlite.exec("ALTER TABLE abc_measurements ADD COLUMN neck_cm REAL NOT NULL DEFAULT 38"); } catch {}
+try { sqlite.exec("ALTER TABLE abc_measurements ADD COLUMN hip_cm REAL"); } catch {}
+// Make weight_kg nullable (SQLite doesn't support ALTER COLUMN, old rows keep their value)
+// Old measurements that lack the new fields are kept as-is; new ones use the full formula.
 
 export class SqliteStorage {
   // Clients

@@ -153,8 +153,8 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json(storage.getAbcMeasurements(parseInt(req.params.clientId)));
   });
   app.post("/api/abc", (req, res) => {
-    const { clientId, date, gender, weightKg, abdomenCm, bodyFatPct } = req.body;
-    res.json(storage.createAbcMeasurement({ clientId, date, gender, weightKg, abdomenCm, bodyFatPct }));
+    const { clientId, date, gender, weightKg, heightCm, neckCm, abdomenCm, hipCm, bodyFatPct } = req.body;
+    res.json(storage.createAbcMeasurement({ clientId, date, gender, weightKg, heightCm, neckCm, abdomenCm, hipCm, bodyFatPct }));
   });
   app.delete("/api/abc/:id", (req, res) => {
     storage.deleteAbcMeasurement(parseInt(req.params.id));

@@ -15,20 +15,33 @@ interface Props {
   clientId: number;
 }
 
-// US Army Body Composition formulas (2023 simplified one-site method)
-// Male:   BF% = -26.97 - (0.12 × weight_lbs) + (1.99 × abdomen_inches)
-// Female: BF% = -9.15 - (0.015 × weight_lbs) + (1.27 × abdomen_inches)
-function calculateBodyFat(gender: string, weightKg: number, abdomenCm: number): number {
-  const weightLbs = weightKg * 2.20462;
-  const abdomenInches = abdomenCm / 2.54;
+// US Army AR 600-9 Body Composition formulas
+// All inputs converted to imperial (inches / lbs) before calculation
+// Male:   %BF = 86.010 × log10(waist − neck) − 70.041 × log10(height) + 36.76
+// Female: %BF = 163.205 × log10(waist + hip − neck) − 97.684 × log10(height) − 78.387
+function calculateBodyFat(
+  gender: string,
+  heightCm: number,
+  neckCm: number,
+  abdomenCm: number,
+  hipCm?: number,
+): number {
+  const heightIn = heightCm / 2.54;
+  const neckIn = neckCm / 2.54;
+  const waistIn = abdomenCm / 2.54;
+  const hipIn = hipCm ? hipCm / 2.54 : 0;
 
   let bf: number;
   if (gender === "male") {
-    bf = -26.97 - (0.12 * weightLbs) + (1.99 * abdomenInches);
+    const circumferenceValue = waistIn - neckIn;
+    if (circumferenceValue <= 0) return 0;
+    bf = 86.010 * Math.log10(circumferenceValue) - 70.041 * Math.log10(heightIn) + 36.76;
   } else {
-    bf = -9.15 - (0.015 * weightLbs) + (1.27 * abdomenInches);
+    const circumferenceValue = waistIn + hipIn - neckIn;
+    if (circumferenceValue <= 0) return 0;
+    bf = 163.205 * Math.log10(circumferenceValue) - 97.684 * Math.log10(heightIn) - 78.387;
   }
-  return Math.round(bf * 10) / 10; // 1 decimal
+  return Math.round(bf * 10) / 10;
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -38,16 +51,22 @@ function CustomTooltip({ active, payload, label }: any) {
     <div className="rounded-md border px-3 py-2 text-xs" style={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))" }}>
       <p className="font-medium mb-1">{label}</p>
       <p style={{ color: "hsl(var(--chart-1))" }}>Vetpercentage: <span className="font-semibold">{d?.bodyFatPct}%</span></p>
-      <p className="text-muted-foreground">Gewicht: {d?.weightKg} kg</p>
-      <p className="text-muted-foreground">Buikomtrek: {d?.abdomenCm} cm</p>
+      <p className="text-muted-foreground">Lengte: {d?.heightCm} cm</p>
+      <p className="text-muted-foreground">Nek: {d?.neckCm} cm</p>
+      <p className="text-muted-foreground">Buik: {d?.abdomenCm} cm</p>
+      {d?.hipCm ? <p className="text-muted-foreground">Heup: {d.hipCm} cm</p> : null}
+      {d?.weightKg ? <p className="text-muted-foreground">Gewicht: {d.weightKg} kg</p> : null}
     </div>
   );
 }
 
 export default function AbcCalculator({ clientId }: Props) {
   const [gender, setGender] = useState<"male" | "female">("male");
+  const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
+  const [neckCm, setNeckCm] = useState("");
   const [abdomenCm, setAbdomenCm] = useState("");
+  const [hipCm, setHipCm] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
@@ -60,8 +79,10 @@ export default function AbcCalculator({ clientId }: Props) {
     mutationFn: (data: any) => apiRequest("POST", "/api/abc", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "abc"] });
+      // Keep height and neck — they rarely change between sessions
       setWeightKg("");
       setAbdomenCm("");
+      setHipCm("");
     },
   });
 
@@ -72,27 +93,62 @@ export default function AbcCalculator({ clientId }: Props) {
     },
   });
 
-  const handleCalculate = () => {
-    const w = parseFloat(weightKg);
+  const canCalculate = () => {
+    const h = parseFloat(heightCm);
+    const n = parseFloat(neckCm);
     const a = parseFloat(abdomenCm);
-    if (!w || !a || !date) return;
-    const bf = calculateBodyFat(gender, w, a);
+    if (!h || !n || !a || !date) return false;
+    if (gender === "female") {
+      const hip = parseFloat(hipCm);
+      if (!hip) return false;
+    }
+    return true;
+  };
+
+  const handleCalculate = () => {
+    const h = parseFloat(heightCm);
+    const n = parseFloat(neckCm);
+    const a = parseFloat(abdomenCm);
+    const w = weightKg ? parseFloat(weightKg) : undefined;
+    const hip = gender === "female" ? parseFloat(hipCm) : undefined;
+    if (!h || !n || !a || !date) return;
+    if (gender === "female" && !hip) return;
+
+    const bf = calculateBodyFat(gender, h, n, a, hip);
     addMeasurement.mutate({
-      clientId, date, gender, weightKg: w, abdomenCm: a, bodyFatPct: bf,
+      clientId, date, gender,
+      weightKg: w || null,
+      heightCm: h,
+      neckCm: n,
+      abdomenCm: a,
+      hipCm: hip || null,
+      bodyFatPct: bf,
     });
   };
 
   // Preview calculation
-  const previewBf = weightKg && abdomenCm
-    ? calculateBodyFat(gender, parseFloat(weightKg), parseFloat(abdomenCm))
-    : null;
+  const previewBf = (() => {
+    const h = parseFloat(heightCm);
+    const n = parseFloat(neckCm);
+    const a = parseFloat(abdomenCm);
+    if (!h || !n || !a) return null;
+    if (gender === "female") {
+      const hip = parseFloat(hipCm);
+      if (!hip) return null;
+      return calculateBodyFat(gender, h, n, a, hip);
+    }
+    return calculateBodyFat(gender, h, n, a);
+  })();
 
   const sorted = [...measurements].sort((a, b) => a.date.localeCompare(b.date));
   const chartData = sorted.map(m => ({
     date: new Date(m.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }),
     bodyFatPct: m.bodyFatPct,
-    weightKg: m.weightKg,
+    heightCm: m.heightCm,
+    neckCm: m.neckCm,
     abdomenCm: m.abdomenCm,
+    hipCm: m.hipCm,
+    weightKg: m.weightKg,
   }));
 
   return (
@@ -102,7 +158,7 @@ export default function AbcCalculator({ clientId }: Props) {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calculator className="w-4 h-4 text-primary" />
-            Nieuwe meting
+            Nieuwe meting (AR 600-9)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -128,21 +184,43 @@ export default function AbcCalculator({ clientId }: Props) {
             </button>
           </div>
 
+          {/* Row 1: Datum + Lengte + Gewicht (optional) */}
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Datum</label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="text-xs h-8" data-testid="input-abc-date" />
             </div>
             <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Gewicht (kg)</label>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Lengte (cm)</label>
+              <Input type="number" step="0.5" value={heightCm} onChange={(e) => setHeightCm(e.target.value)}
+                placeholder="bijv. 180" className="text-xs h-8" data-testid="input-abc-height" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Gewicht (kg) <span className="normal-case opacity-60">optioneel</span></label>
               <Input type="number" step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)}
                 placeholder="bijv. 85" className="text-xs h-8" data-testid="input-abc-weight" />
+            </div>
+          </div>
+
+          {/* Row 2: Nek + Buik + Heup (vrouw) */}
+          <div className={`grid gap-2 ${gender === "female" ? "grid-cols-3" : "grid-cols-2"}`}>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Nek (cm)</label>
+              <Input type="number" step="0.5" value={neckCm} onChange={(e) => setNeckCm(e.target.value)}
+                placeholder="bijv. 38" className="text-xs h-8" data-testid="input-abc-neck" />
             </div>
             <div>
               <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Buikomtrek (cm)</label>
               <Input type="number" step="0.5" value={abdomenCm} onChange={(e) => setAbdomenCm(e.target.value)}
                 placeholder="bijv. 88" className="text-xs h-8" data-testid="input-abc-abdomen" />
             </div>
+            {gender === "female" && (
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Heup (cm)</label>
+                <Input type="number" step="0.5" value={hipCm} onChange={(e) => setHipCm(e.target.value)}
+                  placeholder="bijv. 100" className="text-xs h-8" data-testid="input-abc-hip" />
+              </div>
+            )}
           </div>
 
           {/* Preview */}
@@ -153,7 +231,7 @@ export default function AbcCalculator({ clientId }: Props) {
             </div>
           )}
 
-          <Button size="sm" onClick={handleCalculate} disabled={!weightKg || !abdomenCm || !date}
+          <Button size="sm" onClick={handleCalculate} disabled={!canCalculate()}
             className="w-full text-xs" data-testid="button-abc-save">
             Meting opslaan
           </Button>
@@ -196,8 +274,10 @@ export default function AbcCalculator({ clientId }: Props) {
                   {new Date(m.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" })}
                 </span>
                 <span className="font-semibold text-primary">{m.bodyFatPct}%</span>
-                <span className="text-muted-foreground">{m.weightKg} kg</span>
-                <span className="text-muted-foreground">{m.abdomenCm} cm</span>
+                <span className="text-muted-foreground">nek {m.neckCm}</span>
+                <span className="text-muted-foreground">buik {m.abdomenCm}</span>
+                {m.hipCm ? <span className="text-muted-foreground">heup {m.hipCm}</span> : null}
+                {m.weightKg ? <span className="text-muted-foreground">{m.weightKg} kg</span> : null}
                 <span className="text-muted-foreground/60">{m.gender === "male" ? "M" : "V"}</span>
                 <div className="flex-1" />
                 <button
@@ -216,7 +296,7 @@ export default function AbcCalculator({ clientId }: Props) {
       <ConfirmDialog
         open={!!confirmDeleteId}
         onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}
-        title="Are you sure?"
+        title="Meting verwijderen?"
         description="Deze meting wordt permanent verwijderd."
         onConfirm={() => {
           if (confirmDeleteId) deleteMeasurement.mutate(confirmDeleteId);

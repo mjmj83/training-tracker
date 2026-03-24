@@ -18,7 +18,7 @@ export default function AbcPage() {
     <div className="p-6 max-w-xl">
       <h1 className="text-lg font-semibold mb-1">ABC Calculator</h1>
       <p className="text-xs text-muted-foreground mb-6">
-        US Army Body Composition — schat het vetpercentage op basis van gewicht en buikomtrek.
+        US Army Body Composition (AR 600-9) — schat het vetpercentage op basis van omtrekmetingen.
       </p>
       <AbcCalculator clientId={clientId} />
     </div>
