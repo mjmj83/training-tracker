@@ -19,6 +19,7 @@ export const months = sqliteTable("months", {
   label: text("label").notNull(), // e.g. "Maart 2026"
   year: integer("year").notNull(),
   month: integer("month").notNull(), // 1-12
+  weekCount: integer("week_count").notNull().default(4), // 2, 3, or 4
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
@@ -47,6 +48,7 @@ export const exercises = sqliteTable("exercises", {
   goalReps: integer("goal_reps").notNull().default(10),
   tempo: text("tempo").default(""),
   rest: integer("rest").default(60), // seconds
+  supersetGroupId: integer("superset_group_id"), // null = standalone, same value = grouped superset
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
@@ -68,8 +70,6 @@ export type InsertWeekDate = z.infer<typeof insertWeekDateSchema>;
 export type WeekDate = typeof weekDates.$inferSelect;
 
 // Weight logs — individual set entries per week
-// e.g. exercise "Bench Press" has 3 sets, so for W1 there are 3 rows: set 1, set 2, set 3
-// Each has weight (kg) and actual reps achieved
 export const weightLogs = sqliteTable("weight_logs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   exerciseId: integer("exercise_id").notNull().references(() => exercises.id),
@@ -92,3 +92,15 @@ export const exerciseLibrary = sqliteTable("exercise_library", {
 export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).omit({ id: true });
 export type InsertExerciseLibrary = z.infer<typeof insertExerciseLibrarySchema>;
 export type ExerciseLibrary = typeof exerciseLibrary.$inferSelect;
+
+// Snapshots for undo/redo — stores full month state as JSON
+export const snapshots = sqliteTable("snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  monthId: integer("month_id").notNull().references(() => months.id),
+  data: text("data").notNull(), // JSON blob of full month state
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertSnapshotSchema = createInsertSchema(snapshots).omit({ id: true });
+export type InsertSnapshot = z.infer<typeof insertSnapshotSchema>;
+export type Snapshot = typeof snapshots.$inferSelect;

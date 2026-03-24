@@ -9,15 +9,12 @@ interface Props {
   initialWeight: number | null;
   initialReps: number | null;
   monthId: number;
+  onBeforeChange?: () => void;
 }
 
 export default function WeightCell({
-  exerciseId,
-  weekNumber,
-  setNumber,
-  initialWeight,
-  initialReps,
-  monthId,
+  exerciseId, weekNumber, setNumber,
+  initialWeight, initialReps, monthId, onBeforeChange,
 }: Props) {
   const [weight, setWeight] = useState(initialWeight !== null ? String(initialWeight) : "");
   const [reps, setReps] = useState(initialReps !== null ? String(initialReps) : "");
@@ -25,11 +22,8 @@ export default function WeightCell({
   const upsertLog = useMutation({
     mutationFn: (data: { weight: number | null; reps: number | null }) =>
       apiRequest("POST", "/api/weight-logs", {
-        exerciseId,
-        weekNumber,
-        setNumber,
-        weight: data.weight,
-        reps: data.reps,
+        exerciseId, weekNumber, setNumber,
+        weight: data.weight, reps: data.reps,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
@@ -40,6 +34,7 @@ export default function WeightCell({
     const w = weight ? parseFloat(weight) : null;
     const r = reps ? parseInt(reps) : null;
     if (w !== initialWeight || r !== initialReps) {
+      onBeforeChange?.();
       upsertLog.mutate({ weight: w, reps: r });
     }
   }, [weight, reps, initialWeight, initialReps]);

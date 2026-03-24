@@ -4,171 +4,163 @@ import { storage } from "./storage";
 
 export function registerRoutes(server: Server, app: Express): void {
   // ============= CLIENTS =============
-  app.get("/api/clients", (_req, res) => {
-    const clients = storage.getClients();
-    res.json(clients);
-  });
-
+  app.get("/api/clients", (_req, res) => { res.json(storage.getClients()); });
   app.post("/api/clients", (req, res) => {
     const { name } = req.body;
-    if (!name || typeof name !== "string") {
-      return res.status(400).json({ error: "Name is required" });
-    }
-    const client = storage.createClient({ name });
-    res.json(client);
+    if (!name || typeof name !== "string") return res.status(400).json({ error: "Name is required" });
+    res.json(storage.createClient({ name }));
   });
-
   app.delete("/api/clients/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    storage.deleteClient(id);
+    storage.deleteClient(parseInt(req.params.id));
     res.json({ ok: true });
   });
 
   // ============= MONTHS =============
   app.get("/api/clients/:clientId/months", (req, res) => {
-    const clientId = parseInt(req.params.clientId);
-    const months = storage.getMonthsByClient(clientId);
-    res.json(months);
+    res.json(storage.getMonthsByClient(parseInt(req.params.clientId)));
   });
-
   app.post("/api/months", (req, res) => {
-    const { clientId, label, year, month, sortOrder } = req.body;
-    const m = storage.createMonth({ clientId, label, year, month, sortOrder: sortOrder ?? 0 });
-    res.json(m);
+    const { clientId, label, year, month, weekCount, sortOrder } = req.body;
+    res.json(storage.createMonth({ clientId, label, year, month, weekCount: weekCount ?? 4, sortOrder: sortOrder ?? 0 }));
   });
-
+  app.patch("/api/months/:id", (req, res) => {
+    const updated = storage.updateMonth(parseInt(req.params.id), req.body);
+    res.json(updated);
+  });
   app.delete("/api/months/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    storage.deleteMonth(id);
+    storage.deleteMonth(parseInt(req.params.id));
     res.json({ ok: true });
   });
-
   app.post("/api/months/:id/copy", (req, res) => {
-    const id = parseInt(req.params.id);
     const { label, year, month } = req.body;
-    if (!label || !year || !month) {
-      return res.status(400).json({ error: "label, year, and month are required" });
-    }
-    try {
-      const newMonth = storage.copyMonth(id, label, year, month);
-      res.json(newMonth);
-    } catch (e: any) {
-      res.status(400).json({ error: e.message });
-    }
+    if (!label || !year || !month) return res.status(400).json({ error: "label, year, and month are required" });
+    try { res.json(storage.copyMonth(parseInt(req.params.id), label, year, month)); }
+    catch (e: any) { res.status(400).json({ error: e.message }); }
   });
 
   // ============= TRAINING DAYS =============
   app.get("/api/months/:monthId/training-days", (req, res) => {
-    const monthId = parseInt(req.params.monthId);
-    const days = storage.getTrainingDaysByMonth(monthId);
-    res.json(days);
+    res.json(storage.getTrainingDaysByMonth(parseInt(req.params.monthId)));
   });
-
   app.post("/api/training-days", (req, res) => {
     const { monthId, name, sortOrder } = req.body;
-    const day = storage.createTrainingDay({ monthId, name, sortOrder: sortOrder ?? 0 });
-    res.json(day);
+    res.json(storage.createTrainingDay({ monthId, name, sortOrder: sortOrder ?? 0 }));
   });
-
   app.patch("/api/training-days/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    const updated = storage.updateTrainingDay(id, req.body);
-    res.json(updated);
+    res.json(storage.updateTrainingDay(parseInt(req.params.id), req.body));
   });
-
   app.delete("/api/training-days/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    storage.deleteTrainingDay(id);
+    storage.deleteTrainingDay(parseInt(req.params.id));
     res.json({ ok: true });
   });
 
   // ============= EXERCISES =============
   app.get("/api/training-days/:dayId/exercises", (req, res) => {
-    const dayId = parseInt(req.params.dayId);
-    const exs = storage.getExercisesByTrainingDay(dayId);
-    res.json(exs);
+    res.json(storage.getExercisesByTrainingDay(parseInt(req.params.dayId)));
   });
-
   app.post("/api/exercises", (req, res) => {
-    const { trainingDayId, name, sets, goalReps, tempo, rest, sortOrder } = req.body;
-    const ex = storage.createExercise({
-      trainingDayId,
-      name,
-      sets: sets ?? 3,
-      goalReps: goalReps ?? 10,
-      tempo: tempo ?? "",
-      rest: rest ?? 60,
-      sortOrder: sortOrder ?? 0,
-    });
-    res.json(ex);
+    const { trainingDayId, name, sets, goalReps, tempo, rest, supersetGroupId, sortOrder } = req.body;
+    res.json(storage.createExercise({
+      trainingDayId, name, sets: sets ?? 3, goalReps: goalReps ?? 10,
+      tempo: tempo ?? "", rest: rest ?? 60, supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
+    }));
   });
-
   app.patch("/api/exercises/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    const updated = storage.updateExercise(id, req.body);
-    res.json(updated);
+    res.json(storage.updateExercise(parseInt(req.params.id), req.body));
+  });
+  app.delete("/api/exercises/:id", (req, res) => {
+    storage.deleteExercise(parseInt(req.params.id));
+    res.json({ ok: true });
   });
 
-  app.delete("/api/exercises/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    storage.deleteExercise(id);
+  // ============= SUPERSET =============
+  app.post("/api/exercises/superset", (req, res) => {
+    const { exerciseIds } = req.body;
+    if (!exerciseIds || !Array.isArray(exerciseIds) || exerciseIds.length < 2) {
+      return res.status(400).json({ error: "Need at least 2 exercise IDs" });
+    }
+    // Use the smallest id as the group id
+    const groupId = Math.min(...exerciseIds);
+    for (const id of exerciseIds) {
+      storage.updateExercise(id, { supersetGroupId: groupId });
+    }
+    res.json({ ok: true, groupId });
+  });
+  app.post("/api/exercises/:id/unsuperset", (req, res) => {
+    storage.updateExercise(parseInt(req.params.id), { supersetGroupId: null });
     res.json({ ok: true });
   });
 
   // ============= WEEK DATES =============
   app.get("/api/months/:monthId/week-dates", (req, res) => {
-    const monthId = parseInt(req.params.monthId);
-    const dates = storage.getWeekDatesByMonth(monthId);
-    res.json(dates);
+    res.json(storage.getWeekDatesByMonth(parseInt(req.params.monthId)));
   });
-
   app.post("/api/week-dates", (req, res) => {
     const { monthId, trainingDayId, weekNumber, date } = req.body;
-    const wd = storage.upsertWeekDate({ monthId, trainingDayId, weekNumber, date });
-    res.json(wd);
+    res.json(storage.upsertWeekDate({ monthId, trainingDayId, weekNumber, date }));
   });
 
   // ============= WEIGHT LOGS =============
   app.get("/api/exercises/:exerciseId/weight-logs", (req, res) => {
-    const exerciseId = parseInt(req.params.exerciseId);
-    const logs = storage.getWeightLogsByExercise(exerciseId);
-    res.json(logs);
+    res.json(storage.getWeightLogsByExercise(parseInt(req.params.exerciseId)));
   });
-
   app.get("/api/months/:monthId/weight-logs", (req, res) => {
-    const monthId = parseInt(req.params.monthId);
-    const logs = storage.getWeightLogsByMonth(monthId);
-    res.json(logs);
+    res.json(storage.getWeightLogsByMonth(parseInt(req.params.monthId)));
   });
-
   app.post("/api/weight-logs", (req, res) => {
     const { exerciseId, weekNumber, setNumber, weight, reps } = req.body;
-    const log = storage.upsertWeightLog({ exerciseId, weekNumber, setNumber, weight, reps });
-    res.json(log);
+    res.json(storage.upsertWeightLog({ exerciseId, weekNumber, setNumber, weight, reps }));
   });
 
   // ============= EXERCISE LIBRARY =============
   app.get("/api/exercise-library", (req, res) => {
-    const query = (req.query.q as string) || "";
-    const results = storage.searchExerciseLibrary(query);
-    res.json(results);
+    res.json(storage.searchExerciseLibrary((req.query.q as string) || ""));
   });
 
-  // ============= FULL MONTH DATA (bulk fetch) =============
+  // ============= FULL MONTH DATA =============
   app.get("/api/months/:monthId/full", (req, res) => {
     const monthId = parseInt(req.params.monthId);
-    const days = storage.getTrainingDaysByMonth(monthId);
-    const weekDatesList = storage.getWeekDatesByMonth(monthId);
+    const data = storage.getFullMonthData(monthId);
+    res.json(data);
+  });
 
-    const fullDays = days.map(day => {
-      const dayExercises = storage.getExercisesByTrainingDay(day.id);
-      const exercisesWithLogs = dayExercises.map(ex => {
-        const logs = storage.getWeightLogsByExercise(ex.id);
-        return { ...ex, weightLogs: logs };
-      });
-      return { ...day, exercises: exercisesWithLogs };
+  // ============= SNAPSHOTS / SAVE STATE =============
+  app.get("/api/months/:monthId/snapshots", (req, res) => {
+    res.json(storage.getSnapshotsByMonth(parseInt(req.params.monthId)));
+  });
+  app.post("/api/months/:monthId/save", (req, res) => {
+    const monthId = parseInt(req.params.monthId);
+    const fullData = storage.getFullMonthData(monthId);
+    const snapshot = storage.createSnapshot({
+      monthId,
+      data: JSON.stringify(fullData),
+      createdAt: new Date().toISOString(),
     });
+    res.json(snapshot);
+  });
+  // Direct restore from JSON data (for undo/redo)
+  app.post("/api/months/:monthId/restore-data", (req, res) => {
+    const monthId = parseInt(req.params.monthId);
+    try {
+      storage.restoreMonthFromSnapshot(monthId, req.body);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 
-    res.json({ trainingDays: fullDays, weekDates: weekDatesList });
+  app.post("/api/months/:monthId/restore/:snapshotId", (req, res) => {
+    const monthId = parseInt(req.params.monthId);
+    const snapshotId = parseInt(req.params.snapshotId);
+    const snapshotsList = storage.getSnapshotsByMonth(monthId);
+    const snap = snapshotsList.find(s => s.id === snapshotId);
+    if (!snap) return res.status(404).json({ error: "Snapshot not found" });
+    try {
+      const data = JSON.parse(snap.data);
+      storage.restoreMonthFromSnapshot(monthId, data);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 }

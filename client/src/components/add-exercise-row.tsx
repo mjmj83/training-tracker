@@ -8,9 +8,10 @@ interface Props {
   trainingDayId: number;
   monthId: number;
   sortOrder: number;
+  onBeforeChange?: () => void;
 }
 
-export default function AddExerciseRow({ trainingDayId, monthId, sortOrder }: Props) {
+export default function AddExerciseRow({ trainingDayId, monthId, sortOrder, onBeforeChange }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -57,6 +58,7 @@ export default function AddExerciseRow({ trainingDayId, monthId, sortOrder }: Pr
   const handleSubmit = (name?: string) => {
     const finalName = name ?? searchQuery.trim();
     if (finalName) {
+      onBeforeChange?.();
       createExercise.mutate(finalName);
     }
   };

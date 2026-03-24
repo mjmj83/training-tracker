@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 interface Props {
   monthId: number;
   sortOrder: number;
+  onBeforeChange?: () => void;
 }
 
-export default function AddTrainingDay({ monthId, sortOrder }: Props) {
+export default function AddTrainingDay({ monthId, sortOrder, onBeforeChange }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState("");
 
@@ -49,7 +50,7 @@ export default function AddTrainingDay({ monthId, sortOrder }: Props) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && name.trim()) createDay.mutate(name.trim());
+          if (e.key === "Enter" && name.trim()) { onBeforeChange?.(); createDay.mutate(name.trim()); }
           if (e.key === "Escape") { setIsAdding(false); setName(""); }
         }}
         placeholder="Bijv. 'Day 1 - Push'"
@@ -60,7 +61,7 @@ export default function AddTrainingDay({ monthId, sortOrder }: Props) {
       <Button
         size="sm"
         className="h-8 text-xs"
-        onClick={() => name.trim() && createDay.mutate(name.trim())}
+        onClick={() => { if (name.trim()) { onBeforeChange?.(); createDay.mutate(name.trim()); } }}
         data-testid="button-save-training-day"
       >
         Toevoegen

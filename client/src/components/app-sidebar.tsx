@@ -1,4 +1,4 @@
-import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell } from "lucide-react";
+import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil, Check } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -47,6 +47,8 @@ export function AppSidebar() {
   const [showCopyMonth, setShowCopyMonth] = useState(false);
   const [copyTargetMonth, setCopyTargetMonth] = useState(1);
   const [copyTargetYear, setCopyTargetYear] = useState(new Date().getFullYear());
+  const [editingMonthId, setEditingMonthId] = useState<number | null>(null);
+  const [editingMonthLabel, setEditingMonthLabel] = useState("");
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -88,6 +90,16 @@ export function AppSidebar() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "months"] });
       if (monthId === id) setMonthId(null);
+    },
+  });
+
+  const updateMonthLabel = useMutation({
+    mutationFn: (data: { id: number; label: string }) =>
+      apiRequest("PATCH", `/api/months/${data.id}`, { label: data.label }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "months"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+      setEditingMonthId(null);
     },
   });
 
@@ -219,8 +231,43 @@ export function AppSidebar() {
                       data-testid={`button-month-${month.id}`}
                     >
                       <Calendar className="w-4 h-4" />
-                      <span className="flex-1 truncate">{month.label}</span>
+                      {editingMonthId === month.id ? (
+                        <input
+                          value={editingMonthLabel}
+                          onChange={(e) => setEditingMonthLabel(e.target.value)}
+                          onBlur={() => {
+                            if (editingMonthLabel.trim()) {
+                              updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
+                            } else {
+                              setEditingMonthId(null);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && editingMonthLabel.trim()) {
+                              updateMonthLabel.mutate({ id: month.id, label: editingMonthLabel.trim() });
+                            }
+                            if (e.key === "Escape") setEditingMonthId(null);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex-1 bg-transparent border-none outline-none text-sm focus:ring-0"
+                          autoFocus
+                          data-testid={`input-month-label-${month.id}`}
+                        />
+                      ) : (
+                        <span className="flex-1 truncate">{month.label}</span>
+                      )}
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingMonthId(month.id);
+                            setEditingMonthLabel(month.label);
+                          }}
+                          className="hover:text-primary"
+                          data-testid={`button-edit-month-${month.id}`}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
