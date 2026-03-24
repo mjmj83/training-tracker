@@ -135,6 +135,7 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   displayName: text("display_name").notNull(),
   role: text("role").notNull().default("client"), // 'trainer' | 'client'
+  pinHash: text("pin_hash"), // bcrypt hash of PIN code
   clientId: integer("client_id").references(() => clients.id), // linked client for 'client' role
 });
 

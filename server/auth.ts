@@ -1,5 +1,6 @@
 import { Express, Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import bcryptjs from "bcryptjs";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -191,6 +192,51 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
       res.json({ verified: true, sessionId: newSessionId, user });
     } catch (e: any) {
       console.error("login/verify error:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/auth/pin-login — fallback for iframes where WebAuthn is blocked
+  app.post("/api/auth/pin-login", (req: Request, res: Response) => {
+    try {
+      const { email, pin } = req.body;
+      if (!email || !pin) return res.status(400).json({ error: "Email en PIN zijn vereist" });
+
+      const user = storage.getUserByEmail(email);
+      if (!user) return res.status(404).json({ error: "Gebruiker niet gevonden" });
+      if (!user.pinHash) return res.status(400).json({ error: "Geen PIN ingesteld. Neem contact op met je trainer." });
+
+      if (!bcryptjs.compareSync(pin, user.pinHash)) {
+        return res.status(401).json({ error: "Onjuiste PIN" });
+      }
+
+      const sessionId = crypto.randomBytes(32).toString("hex");
+      storage.createSession(sessionId, user.id);
+      res.json({ verified: true, sessionId, user });
+    } catch (e: any) {
+      console.error("pin-login error:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/auth/set-pin — set/change PIN for a user (requires auth)
+  app.post("/api/auth/set-pin", (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (!token) return res.status(401).json({ error: "Not authenticated" });
+      const session = storage.getSession(token);
+      if (!session) return res.status(401).json({ error: "Invalid session" });
+
+      const { pin, userId } = req.body;
+      if (!pin || pin.length < 4) return res.status(400).json({ error: "PIN moet minimaal 4 tekens zijn" });
+
+      // Trainers can set PIN for any user, clients only for themselves
+      const targetId = session.user.role === "trainer" && userId ? userId : session.user.id;
+      const hash = bcryptjs.hashSync(pin, 10);
+      storage.updateUser(targetId, { pinHash: hash });
+      res.json({ ok: true });
+    } catch (e: any) {
+      console.error("set-pin error:", e);
       res.status(500).json({ error: e.message });
     }
   });

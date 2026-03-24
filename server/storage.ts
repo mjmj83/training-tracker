@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { eq, and, like } from "drizzle-orm";
+import bcryptjs from "bcryptjs";
 import {
   clients, type Client, type InsertClient,
   abcMeasurements, type AbcMeasurement, type InsertAbcMeasurement,
@@ -143,11 +144,24 @@ sqlite.exec(`
   );
 `);
 
-// Seed default trainer user
+// Migration: add pin_hash column
+try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
+
+// Seed default trainer user with PIN "1234"
 {
   const userCount = db.select().from(users).all().length;
   if (userCount === 0) {
-    db.insert(users).values({ email: "trainer@training.app", displayName: "Trainer", role: "trainer" }).run();
+    const defaultPin = bcryptjs.hashSync("1234", 10);
+    db.insert(users).values({ email: "trainer@training.app", displayName: "Trainer", role: "trainer", pinHash: defaultPin }).run();
+  } else {
+    // Set default PIN for existing users that don't have one
+    const usersWithoutPin = db.select().from(users).all().filter(u => !u.pinHash);
+    if (usersWithoutPin.length > 0) {
+      const defaultPin = bcryptjs.hashSync("1234", 10);
+      for (const u of usersWithoutPin) {
+        db.update(users).set({ pinHash: defaultPin }).where(eq(users.id, u.id)).run();
+      }
+    }
   }
 }
 
@@ -367,7 +381,7 @@ export class SqliteStorage {
       clientId: data.clientId ?? null,
     }).returning().get();
   }
-  updateUser(id: number, data: Partial<{ email: string; displayName: string; role: string; clientId: number | null }>): User | undefined {
+  updateUser(id: number, data: Partial<{ email: string; displayName: string; role: string; clientId: number | null; pinHash: string }>): User | undefined {
     return db.update(users).set(data).where(eq(users.id, id)).returning().get();
   }
 

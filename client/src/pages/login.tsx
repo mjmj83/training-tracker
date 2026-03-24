@@ -1,28 +1,47 @@
 import { useState } from "react";
-import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
+import { startRegistration, startAuthentication, browserSupportsWebAuthn } from "@simplewebauthn/browser";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell, Fingerprint, KeyRound } from "lucide-react";
 
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"login" | "register">("login");
 
-  const handleLogin = async () => {
+  const handlePinLogin = async () => {
+    if (!email || !pin) return;
     setError(null);
-    setSuccess(null);
     setLoading(true);
     try {
-      // Step 1: get authentication options
+      const res = await fetch(`${API_BASE}/api/auth/pin-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, pin }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Inloggen mislukt");
+      if (data.verified) {
+        login(data.sessionId, data.user);
+      }
+    } catch (e: any) {
+      setError(e.message || "Inloggen mislukt");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
       const optRes = await fetch(`${API_BASE}/api/auth/login/options`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -33,11 +52,7 @@ export default function LoginPage() {
         throw new Error(data.error || "Fout bij ophalen login opties");
       }
       const { options, sessionId } = await optRes.json();
-
-      // Step 2: browser WebAuthn ceremony
       const authResponse = await startAuthentication({ optionsJSON: options });
-
-      // Step 3: verify on server
       const verRes = await fetch(`${API_BASE}/api/auth/login/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,18 +67,20 @@ export default function LoginPage() {
         login(result.sessionId, result.user);
       }
     } catch (e: any) {
-      setError(e.message || "Inloggen mislukt");
+      if (e.name === "NotAllowedError") {
+        setError("Passkey geannuleerd door gebruiker");
+      } else {
+        setError(e.message || "Inloggen mislukt");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegister = async () => {
+  const handlePasskeyRegister = async () => {
     setError(null);
-    setSuccess(null);
     setLoading(true);
     try {
-      // Step 1: get registration options
       const optRes = await fetch(`${API_BASE}/api/auth/register/options`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,14 +88,10 @@ export default function LoginPage() {
       });
       if (!optRes.ok) {
         const data = await optRes.json();
-        throw new Error(data.error || "Fout bij ophalen registratie opties");
+        throw new Error(data.error || "Fout bij registratie opties");
       }
       const { options, sessionId } = await optRes.json();
-
-      // Step 2: browser WebAuthn ceremony
       const regResponse = await startRegistration({ optionsJSON: options });
-
-      // Step 3: verify on server
       const verRes = await fetch(`${API_BASE}/api/auth/register/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,11 +106,17 @@ export default function LoginPage() {
         login(result.sessionId, result.user);
       }
     } catch (e: any) {
-      setError(e.message || "Registratie mislukt");
+      if (e.name === "NotAllowedError") {
+        setError("Passkey registratie geannuleerd");
+      } else {
+        setError(e.message || "Registratie mislukt");
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const supportsPasskey = browserSupportsWebAuthn();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -107,11 +126,7 @@ export default function LoginPage() {
             <Dumbbell className="w-8 h-8 text-primary" />
           </div>
           <CardTitle className="text-lg">Training Tracker</CardTitle>
-          <CardDescription>
-            {mode === "login"
-              ? "Log in met je passkey"
-              : "Registreer een nieuwe passkey"}
-          </CardDescription>
+          <CardDescription>Log in om verder te gaan</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -122,12 +137,24 @@ export default function LoginPage() {
               placeholder="trainer@training.app"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && email) {
-                  mode === "login" ? handleLogin() : handleRegister();
-                }
-              }}
               autoFocus
+              data-testid="input-login-email"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pin">PIN</Label>
+            <Input
+              id="pin"
+              type="password"
+              inputMode="numeric"
+              placeholder="Voer je PIN in"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && email && pin) handlePinLogin();
+              }}
+              data-testid="input-login-pin"
             />
           </div>
 
@@ -137,58 +164,44 @@ export default function LoginPage() {
             </div>
           )}
 
-          {success && (
-            <div className="text-sm text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 rounded-md px-3 py-2">
-              {success}
-            </div>
-          )}
+          <Button
+            className="w-full gap-2"
+            onClick={handlePinLogin}
+            disabled={!email || !pin || loading}
+            data-testid="button-pin-login"
+          >
+            <KeyRound className="w-4 h-4" />
+            {loading ? "Bezig..." : "Inloggen"}
+          </Button>
 
-          {mode === "login" ? (
-            <>
-              <Button
-                className="w-full"
-                onClick={handleLogin}
-                disabled={!email || loading}
-              >
-                {loading ? "Bezig..." : "Inloggen met passkey"}
-              </Button>
-              <div className="text-center">
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
-                  onClick={() => {
-                    setMode("register");
-                    setError(null);
-                    setSuccess(null);
-                  }}
+          {supportsPasskey && (
+            <div className="border-t border-border pt-3 space-y-2">
+              <p className="text-[10px] text-center text-muted-foreground uppercase tracking-wide">of gebruik een passkey</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={handlePasskeyLogin}
+                  disabled={!email || loading}
+                  data-testid="button-passkey-login"
                 >
-                  Passkey registreren
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <Button
-                className="w-full"
-                onClick={handleRegister}
-                disabled={!email || loading}
-              >
-                {loading ? "Bezig..." : "Passkey registreren"}
-              </Button>
-              <div className="text-center">
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
-                  onClick={() => {
-                    setMode("login");
-                    setError(null);
-                    setSuccess(null);
-                  }}
+                  <Fingerprint className="w-3.5 h-3.5" />
+                  Inloggen
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={handlePasskeyRegister}
+                  disabled={!email || loading}
+                  data-testid="button-passkey-register"
                 >
-                  Terug naar inloggen
-                </button>
+                  <Fingerprint className="w-3.5 h-3.5" />
+                  Registreren
+                </Button>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
