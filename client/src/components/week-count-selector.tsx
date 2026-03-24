@@ -30,22 +30,22 @@ export default function WeekCountSelector({ monthId, currentCount }: Props) {
           <span className="hidden sm:inline">Instellingen</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[180px] p-3" align="start">
+      <PopoverContent className="w-[240px] p-3" align="start">
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Aantal weken</p>
-          <div className="flex gap-1">
-            {[2, 3, 4].map((n) => (
+          <div className="flex gap-1 flex-wrap">
+            {[2, 3, 4, 5, 6, 7, 8].map((n) => (
               <button
                 key={n}
                 onClick={() => updateMonth.mutate(n)}
-                className={`flex-1 h-8 rounded text-xs font-medium transition-colors ${
+                className={`px-3 h-8 rounded text-xs font-medium transition-colors ${
                   currentCount === n
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:text-foreground"
                 }`}
                 data-testid={`button-weeks-${n}`}
               >
-                {n} weken
+                {n}
               </button>
             ))}
           </div>

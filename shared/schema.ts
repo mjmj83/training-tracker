@@ -14,14 +14,15 @@ export const insertClientSchema = createInsertSchema(clients).omit({ id: true })
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
-// Months (training program block)
+// Training blocks (formerly "months")
 export const months = sqliteTable("months", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   clientId: integer("client_id").notNull().references(() => clients.id),
-  label: text("label").notNull(), // e.g. "Maart 2026"
+  label: text("label").notNull(), // e.g. "Vakantie Ibiza"
   year: integer("year").notNull(),
-  month: integer("month").notNull(), // 1-12
-  weekCount: integer("week_count").notNull().default(4), // 2, 3, or 4
+  month: integer("month").notNull(), // 1-12 (kept for compat)
+  weekCount: integer("week_count").notNull().default(4), // 2-8
+  startDate: text("start_date"), // ISO date e.g. "2026-03-24"
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

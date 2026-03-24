@@ -28,8 +28,8 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json(storage.getMonthsByClient(parseInt(req.params.clientId)));
   });
   app.post("/api/months", (req, res) => {
-    const { clientId, label, year, month, weekCount, sortOrder } = req.body;
-    res.json(storage.createMonth({ clientId, label, year, month, weekCount: weekCount ?? 4, sortOrder: sortOrder ?? 0 }));
+    const { clientId, label, year, month, weekCount, sortOrder, startDate } = req.body;
+    res.json(storage.createMonth({ clientId, label, year, month, weekCount: weekCount ?? 4, sortOrder: sortOrder ?? 0, startDate: startDate ?? null }));
   });
   app.patch("/api/months/:id", (req, res) => {
     const updated = storage.updateMonth(parseInt(req.params.id), req.body);
@@ -40,9 +40,20 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json({ ok: true });
   });
   app.post("/api/months/:id/copy", (req, res) => {
-    const { label, year, month } = req.body;
+    const { label, year, month, weekCount, startDate } = req.body;
     if (!label || !year || !month) return res.status(400).json({ error: "label, year, and month are required" });
-    try { res.json(storage.copyMonth(parseInt(req.params.id), label, year, month)); }
+    try {
+      const copy = storage.copyMonth(parseInt(req.params.id), label, year, month);
+      // Update weekCount and startDate on the copy if provided
+      if (weekCount || startDate) {
+        const updates: any = {};
+        if (weekCount) updates.weekCount = weekCount;
+        if (startDate) updates.startDate = startDate;
+        const updated = storage.updateMonth(copy.id, updates);
+        return res.json(updated);
+      }
+      res.json(copy);
+    }
     catch (e: any) { res.status(400).json({ error: e.message }); }
   });
 
