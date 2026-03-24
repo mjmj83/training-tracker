@@ -1,5 +1,5 @@
-import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check } from "lucide-react";
-import { Link } from "wouter";
+import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
@@ -46,6 +46,7 @@ const MONTH_NAMES = [
 export function AppSidebar() {
   const { clientId, setClientId } = useSelectedClient();
   const { monthId, setMonthId } = useSelectedMonth();
+  const [location, navigate] = useLocation();
   const [showCopyMonth, setShowCopyMonth] = useState(false);
   const [copyTargetMonth, setCopyTargetMonth] = useState(1);
   const [copyTargetYear, setCopyTargetYear] = useState(new Date().getFullYear());
@@ -409,7 +410,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild isActive={location === "/" && !!monthId}>
                   <Link href="/">
                     <Dumbbell className="w-4 h-4" />
                     <span>Training</span>
@@ -417,7 +418,16 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton
+                  isActive={location === "/" && !monthId && !!clientId}
+                  onClick={() => { if (clientId) { setMonthId(null); navigate("/"); } }}
+                >
+                  <NotebookPen className="w-4 h-4" />
+                  <span>Notities</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location.startsWith("/charts")}>
                   <Link href="/charts">
                     <BarChart3 className="w-4 h-4" />
                     <span>Charts</span>
