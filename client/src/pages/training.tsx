@@ -11,6 +11,7 @@ import MonthSwitcher from "@/components/month-switcher";
 import { useUndoRedo } from "@/lib/undo-redo";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 import { useEffect, useCallback } from "react";
+import { useQuery as useQueryAuto } from "@tanstack/react-query";
 
 interface FullMonthData {
   month: Month;
@@ -22,7 +23,7 @@ interface FullMonthData {
 
 export default function TrainingPage() {
   const { clientId } = useSelectedClient();
-  const { monthId } = useSelectedMonth();
+  const { monthId, setMonthId } = useSelectedMonth();
   const { toast } = useToast();
   const { canUndo, canRedo, undo, redo, pushSnapshot, undoCount, redoCount } = useUndoRedo(monthId);
 
@@ -58,6 +59,20 @@ export default function TrainingPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  // Auto-select last month when client is selected
+  const { data: autoMonths = [] } = useQueryAuto<any[]>({
+    queryKey: ["/api/clients", clientId, "months"],
+    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/months`).then(r => r.json()),
+    enabled: !!clientId && !monthId,
+  });
+
+  useEffect(() => {
+    if (clientId && !monthId && autoMonths.length > 0) {
+      const last = autoMonths[autoMonths.length - 1];
+      setMonthId(last.id);
+    }
+  }, [clientId, monthId, autoMonths]);
 
   if (!clientId) {
     return (
