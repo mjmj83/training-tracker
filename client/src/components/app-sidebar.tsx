@@ -1,4 +1,4 @@
-import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil, Check } from "lucide-react";
+import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -16,14 +16,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -32,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ConfirmDialog from "@/components/confirm-dialog";
 import type { Client, Month } from "@shared/schema";
 
 const MONTH_NAMES = [
@@ -49,6 +48,13 @@ export function AppSidebar() {
   const [copyTargetYear, setCopyTargetYear] = useState(new Date().getFullYear());
   const [editingMonthId, setEditingMonthId] = useState<number | null>(null);
   const [editingMonthLabel, setEditingMonthLabel] = useState("");
+
+  // Confirm dialog state
+  const [confirmDelete, setConfirmDelete] = useState<{
+    type: "client" | "month";
+    id: number;
+    label: string;
+  } | null>(null);
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -73,7 +79,7 @@ export function AppSidebar() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/clients/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      if (clientId) setClientId(null);
+      setClientId(null);
     },
   });
 
@@ -85,11 +91,11 @@ export function AppSidebar() {
     },
   });
 
-  const deleteMonth = useMutation({
+  const deleteMonthMut = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/months/${id}`),
-    onSuccess: () => {
+    onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "months"] });
-      if (monthId === id) setMonthId(null);
+      if (monthId === deletedId) setMonthId(null);
     },
   });
 
@@ -127,6 +133,16 @@ export function AppSidebar() {
       year: y,
       month: m,
     });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!confirmDelete) return;
+    if (confirmDelete.type === "client") {
+      deleteClient.mutate(confirmDelete.id);
+    } else {
+      deleteMonthMut.mutate(confirmDelete.id);
+    }
+    setConfirmDelete(null);
   };
 
   return (
@@ -191,9 +207,7 @@ export function AppSidebar() {
                       className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`${client.name} verwijderen?`)) {
-                          deleteClient.mutate(client.id);
-                        }
+                        setConfirmDelete({ type: "client", id: client.id, label: client.name });
                       }}
                       data-testid={`button-delete-client-${client.id}`}
                     >
@@ -284,9 +298,7 @@ export function AppSidebar() {
                           className="hover:text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`${month.label} verwijderen?`)) {
-                              deleteMonth.mutate(month.id);
-                            }
+                            setConfirmDelete({ type: "month", id: month.id, label: month.label });
                           }}
                           data-testid={`button-delete-month-${month.id}`}
                         >
@@ -376,6 +388,15 @@ export function AppSidebar() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+        title="Are you sure?"
+        description={confirmDelete ? `"${confirmDelete.label}" wordt permanent verwijderd met alle bijbehorende data.` : ""}
+        onConfirm={handleConfirmDelete}
+      />
     </Sidebar>
   );
 }

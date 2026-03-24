@@ -87,7 +87,7 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json({ ok: true, groupId });
   });
   app.post("/api/exercises/:id/unsuperset", (req, res) => {
-    storage.updateExercise(parseInt(req.params.id), { supersetGroupId: null });
+    storage.clearSupersetGroupId(parseInt(req.params.id));
     res.json({ ok: true });
   });
 

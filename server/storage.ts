@@ -185,6 +185,9 @@ export class SqliteStorage {
     db.delete(weightLogs).where(eq(weightLogs.exerciseId, id)).run();
     db.delete(exercises).where(eq(exercises.id, id)).run();
   }
+  clearSupersetGroupId(id: number): void {
+    sqlite.prepare("UPDATE exercises SET superset_group_id = NULL WHERE id = ?").run(id);
+  }
 
   // Week Dates
   getWeekDatesByMonth(monthId: number): WeekDate[] {

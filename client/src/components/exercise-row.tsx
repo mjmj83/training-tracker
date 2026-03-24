@@ -4,6 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Trash2, GripVertical, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WeightCell from "@/components/weight-cell";
+import ConfirmDialog from "@/components/confirm-dialog";
 import type { Exercise, WeightLog } from "@shared/schema";
 
 interface Props {
@@ -32,6 +33,7 @@ export default function ExerciseRow({
   const [goalReps, setGoalReps] = useState(exercise.goalReps);
   const [tempo, setTempo] = useState(exercise.tempo ?? "");
   const [rest, setRest] = useState(exercise.rest ?? 60);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const updateExercise = useMutation({
     mutationFn: (data: Partial<Exercise>) =>
@@ -197,12 +199,23 @@ export default function ExerciseRow({
           <Button
             size="icon" variant="ghost"
             className="h-5 w-5 text-muted-foreground hover:text-destructive"
-            onClick={() => { onBeforeChange(); deleteExercise.mutate(); }}
+            onClick={() => setShowDeleteConfirm(true)}
             data-testid={`button-delete-exercise-${exercise.id}`}
           >
             <Trash2 className="w-3 h-3" />
           </Button>
         </div>
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title="Are you sure?"
+          description={`"${exercise.name}" wordt verwijderd met alle ingevulde gewichtsdata.`}
+          onConfirm={() => {
+            onBeforeChange();
+            deleteExercise.mutate();
+            setShowDeleteConfirm(false);
+          }}
+        />
       </td>
     </tr>
   );

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import ExerciseRow from "@/components/exercise-row";
 import AddExerciseRow from "@/components/add-exercise-row";
 import WeekDateInput from "@/components/week-date-input";
+import ConfirmDialog from "@/components/confirm-dialog";
 import type { TrainingDay, Exercise, WeightLog, WeekDate } from "@shared/schema";
 
 interface Props {
@@ -24,6 +25,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
   const [name, setName] = useState(day.name);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const dragSourceId = useRef<number | null>(null);
+  const [showDeleteDayConfirm, setShowDeleteDayConfirm] = useState(false);
 
   const updateDay = useMutation({
     mutationFn: (data: { name: string }) =>
@@ -124,17 +126,24 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
           size="icon"
           variant="ghost"
           className="h-6 w-6 text-muted-foreground hover:text-destructive"
-          onClick={() => {
-            if (confirm(`"${day.name}" verwijderen met alle oefeningen?`)) {
-              onBeforeChange();
-              deleteDay.mutate();
-            }
-          }}
+          onClick={() => setShowDeleteDayConfirm(true)}
           data-testid={`button-delete-day-${day.id}`}
         >
           <Trash2 className="w-3 h-3" />
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteDayConfirm}
+        onOpenChange={setShowDeleteDayConfirm}
+        title="Are you sure?"
+        description={`"${day.name}" wordt verwijderd met alle oefeningen en ingevulde data.`}
+        onConfirm={() => {
+          onBeforeChange();
+          deleteDay.mutate();
+          setShowDeleteDayConfirm(false);
+        }}
+      />
 
       {/* Exercise Table */}
       {isOpen && (
