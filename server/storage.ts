@@ -231,10 +231,16 @@ export class SqliteStorage {
     return db.insert(weightLogs).values(data).returning().get();
   }
 
-  // Exercise Library
+  // Exercise Library — fuzzy search: each word in query must appear somewhere in the name
   searchExerciseLibrary(query: string): ExerciseLibrary[] {
     if (!query || query.length === 0) return db.select().from(exerciseLibrary).all();
-    return db.select().from(exerciseLibrary).where(like(exerciseLibrary.name, `%${query.toLowerCase()}%`)).all();
+    // Split query into words, each must match (AND logic)
+    const words = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return db.select().from(exerciseLibrary).all();
+    const conditions = words.map((_, i) => `LOWER(name) LIKE ?`).join(" AND ");
+    const params = words.map(w => `%${w}%`);
+    const rows = sqlite.prepare(`SELECT id, name FROM exercise_library WHERE ${conditions} ORDER BY name`).all(...params) as ExerciseLibrary[];
+    return rows;
   }
   addToExerciseLibrary(name: string): ExerciseLibrary | undefined {
     const existing = db.select().from(exerciseLibrary).where(eq(exerciseLibrary.name, name)).get();
