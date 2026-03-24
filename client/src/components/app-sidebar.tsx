@@ -1,4 +1,4 @@
-import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil } from "lucide-react";
+import { Users, Calendar, Plus, Trash2, Copy, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -24,6 +24,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -41,18 +46,15 @@ const MONTH_NAMES = [
 export function AppSidebar() {
   const { clientId, setClientId } = useSelectedClient();
   const { monthId, setMonthId } = useSelectedMonth();
-  const [newClientName, setNewClientName] = useState("");
-  const [showNewClient, setShowNewClient] = useState(false);
   const [showCopyMonth, setShowCopyMonth] = useState(false);
   const [copyTargetMonth, setCopyTargetMonth] = useState(1);
   const [copyTargetYear, setCopyTargetYear] = useState(new Date().getFullYear());
   const [editingMonthId, setEditingMonthId] = useState<number | null>(null);
   const [editingMonthLabel, setEditingMonthLabel] = useState("");
-
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [editingClientName, setEditingClientName] = useState("");
-
-  // Confirm dialog state
   const [confirmDelete, setConfirmDelete] = useState<{
     type: "client" | "month";
     id: number;
@@ -69,12 +71,16 @@ export function AppSidebar() {
     enabled: !!clientId,
   });
 
+  const selectedClient = clients.find(c => c.id === clientId);
+
   const createClient = useMutation({
     mutationFn: (name: string) => apiRequest("POST", "/api/clients", { name }),
-    onSuccess: () => {
+    onSuccess: async (res) => {
+      const newClient = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setNewClientName("");
-      setShowNewClient(false);
+      setClientId(newClient.id);
+      setClientPopoverOpen(false);
     },
   });
 
@@ -159,65 +165,42 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
+      {/* Header: Logo + Client Name with Switcher */}
+      <SidebarHeader className="p-4 pb-3">
+        <div className="flex items-center gap-2 mb-2">
           <Dumbbell className="w-5 h-5 text-primary" />
           <span className="font-semibold text-sm">Training Tracker</span>
         </div>
-      </SidebarHeader>
-      <SidebarContent>
-        {/* Clients */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between">
-            <span>Klanten</span>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-5 w-5"
-              onClick={() => setShowNewClient(!showNewClient)}
-              data-testid="button-add-client"
+
+        {/* Client Switcher */}
+        <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button
+              className="flex items-center gap-2 w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+              data-testid="button-client-switcher"
             >
-              <Plus className="w-3 h-3" />
-            </Button>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            {showNewClient && (
-              <div className="flex gap-1 px-2 pb-2">
-                <Input
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="Naam..."
-                  className="h-7 text-xs"
-                  data-testid="input-new-client"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newClientName.trim()) {
-                      createClient.mutate(newClientName.trim());
-                    }
-                  }}
-                />
-                <Button
-                  size="sm"
-                  className="h-7 text-xs px-2"
-                  onClick={() => newClientName.trim() && createClient.mutate(newClientName.trim())}
-                  data-testid="button-save-client"
-                >
-                  OK
-                </Button>
-              </div>
-            )}
-            <SidebarMenu>
+              <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="flex-1 truncate font-medium">
+                {selectedClient?.name ?? "Selecteer klant..."}
+              </span>
+              <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[220px] p-2" align="start">
+            <div className="space-y-1">
               {clients.map((client) => (
-                <SidebarMenuItem key={client.id}>
-                  <SidebarMenuButton
-                    isActive={clientId === client.id}
-                    onClick={() => setClientId(client.id)}
-                    data-testid={`button-client-${client.id}`}
-                  >
-                    <Users className="w-4 h-4" />
-                    {editingClientId === client.id ? (
-                      <input
+                <div key={client.id} className="flex items-center group">
+                  {editingClientId === client.id ? (
+                    <div className="flex gap-1 flex-1 px-1">
+                      <Input
                         value={editingClientName}
                         onChange={(e) => setEditingClientName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && editingClientName.trim()) {
+                            updateClientName.mutate({ id: client.id, name: editingClientName.trim() });
+                          }
+                          if (e.key === "Escape") setEditingClientId(null);
+                        }}
                         onBlur={() => {
                           if (editingClientName.trim()) {
                             updateClientName.mutate({ id: client.id, name: editingClientName.trim() });
@@ -225,50 +208,83 @@ export function AppSidebar() {
                             setEditingClientId(null);
                           }
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && editingClientName.trim()) {
-                            updateClientName.mutate({ id: client.id, name: editingClientName.trim() });
-                          }
-                          if (e.key === "Escape") setEditingClientId(null);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 bg-transparent border-none outline-none text-sm focus:ring-0"
+                        className="h-7 text-xs"
                         autoFocus
                         data-testid={`input-client-name-${client.id}`}
                       />
-                    ) : (
-                      <span className="flex-1 truncate">{client.name}</span>
-                    )}
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingClientId(client.id);
-                          setEditingClientName(client.name);
-                        }}
-                        className="hover:text-primary"
-                        data-testid={`button-edit-client-${client.id}`}
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      <button
-                        className="hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmDelete({ type: "client", id: client.id, label: client.name });
-                        }}
-                        data-testid={`button-delete-client-${client.id}`}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
                     </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                  ) : (
+                    <button
+                      className="flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                      onClick={() => {
+                        setClientId(client.id);
+                        setClientPopoverOpen(false);
+                      }}
+                      data-testid={`button-client-${client.id}`}
+                    >
+                      <Check className={`w-3.5 h-3.5 shrink-0 ${clientId === client.id ? "opacity-100 text-primary" : "opacity-0"}`} />
+                      <span className="flex-1 truncate">{client.name}</span>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingClientId(client.id);
+                            setEditingClientName(client.name);
+                          }}
+                          className="hover:text-primary p-0.5"
+                          data-testid={`button-edit-client-${client.id}`}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setClientPopoverOpen(false);
+                            setConfirmDelete({ type: "client", id: client.id, label: client.name });
+                          }}
+                          className="hover:text-destructive p-0.5"
+                          data-testid={`button-delete-client-${client.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </button>
+                  )}
+                </div>
               ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
+              {/* Add new client */}
+              <div className="border-t border-border pt-1 mt-1">
+                <div className="flex gap-1 px-1">
+                  <Input
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Nieuwe klant..."
+                    className="h-7 text-xs"
+                    data-testid="input-new-client"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newClientName.trim()) {
+                        createClient.mutate(newClientName.trim());
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={() => newClientName.trim() && createClient.mutate(newClientName.trim())}
+                    disabled={!newClientName.trim()}
+                    data-testid="button-save-client"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </SidebarHeader>
+
+      <SidebarContent>
         {/* Months */}
         {clientId && (
           <SidebarGroup>
