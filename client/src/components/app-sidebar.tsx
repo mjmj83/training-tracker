@@ -27,8 +27,8 @@ import type { Client } from "@shared/schema";
 
 export function AppSidebar() {
   const { clientId, setClientId } = useSelectedClient();
-  const { monthId, setMonthId } = useSelectedMonth();
-  const [location, navigate] = useLocation();
+  const { monthId } = useSelectedMonth();
+  const [location] = useLocation();
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
@@ -80,7 +80,6 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      {/* Header: Logo + Client Name with Switcher */}
       <SidebarHeader className="p-4 pb-3">
         <div className="flex items-center gap-2 mb-2">
           <Dumbbell className="w-5 h-5 text-primary" />
@@ -167,8 +166,6 @@ export function AppSidebar() {
                   )}
                 </div>
               ))}
-
-              {/* Add new client */}
               <div className="border-t border-border pt-1 mt-1">
                 <div className="flex gap-1 px-1">
                   <Input
@@ -197,6 +194,23 @@ export function AppSidebar() {
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Notities link — directly under client */}
+        {clientId && (
+          <Link href="/notes">
+            <button
+              className={`flex items-center gap-2 w-full rounded-md px-3 py-1.5 mt-1.5 text-xs transition-colors ${
+                location === "/notes"
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              }`}
+              data-testid="button-notes"
+            >
+              <NotebookPen className="w-3.5 h-3.5" />
+              <span>Klantnotities</span>
+            </button>
+          </Link>
+        )}
       </SidebarHeader>
 
       <SidebarContent>
@@ -206,20 +220,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/" && !!monthId}>
+                <SidebarMenuButton asChild isActive={location === "/" && !!clientId}>
                   <Link href="/">
                     <Dumbbell className="w-4 h-4" />
                     <span>Training</span>
                   </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={location === "/" && !monthId && !!clientId}
-                  onClick={() => { if (clientId) { setMonthId(null); navigate("/"); } }}
-                >
-                  <NotebookPen className="w-4 h-4" />
-                  <span>Notities</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -235,7 +240,6 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Confirm Delete Dialog */}
       <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}

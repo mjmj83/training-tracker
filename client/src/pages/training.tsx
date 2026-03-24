@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import TrainingDaySection from "@/components/training-day-section";
 import AddTrainingDay from "@/components/add-training-day";
 import WeekCountSelector from "@/components/week-count-selector";
-import ClientNotepad from "@/components/client-notepad";
+import MonthSwitcher from "@/components/month-switcher";
 import { useUndoRedo } from "@/lib/undo-redo";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 import { useEffect, useCallback } from "react";
@@ -39,7 +39,6 @@ export default function TrainingPage() {
     },
   });
 
-  // Keyboard shortcuts for undo/redo
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
       e.preventDefault();
@@ -70,7 +69,12 @@ export default function TrainingPage() {
   }
 
   if (!monthId) {
-    return <ClientNotepad clientId={clientId} />;
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+        <Dumbbell className="w-10 h-10 opacity-30" />
+        <p className="text-sm">Maak een nieuwe maand aan</p>
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -90,9 +94,10 @@ export default function TrainingPage() {
     <div className="p-4 space-y-2">
       {/* Toolbar */}
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
-        <WeekCountSelector monthId={monthId} currentCount={weekCount} />
+        <MonthSwitcher />
         <div className="flex-1" />
         <div className="flex items-center gap-1">
+          <WeekCountSelector monthId={monthId} currentCount={weekCount} />
           <Button
             size="sm"
             variant="ghost"
