@@ -25,12 +25,15 @@ interface Props {
   onDragLeave: () => void;
   onDrop: () => void;
   onBeforeChange: () => void;
+  hoveredWeek: number | null;
+  onWeekHover: (week: number | null) => void;
 }
 
 export default function ExerciseRow({
   exercise, weightLogs, monthId, weekCount,
   isSuperset, isFirstInSuperset, isLastInSuperset,
   isDragOver, onDragStart, onDragOver, onDragLeave, onDrop, onBeforeChange,
+  hoveredWeek, onWeekHover,
 }: Props) {
   const [name, setName] = useState(exercise.name);
   const [sets, setSets] = useState(exercise.sets);
@@ -207,7 +210,12 @@ export default function ExerciseRow({
 
       {/* Weight columns */}
       {weeks.map((weekNum) => (
-        <td key={weekNum} className="py-1 px-1">
+        <td
+          key={weekNum}
+          className={`py-1 px-1 transition-colors ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
+          onMouseEnter={() => onWeekHover(weekNum)}
+          onMouseLeave={() => onWeekHover(null)}
+        >
           <div className="flex flex-col gap-0.5">
             {Array.from({ length: sets }, (_, i) => i + 1).map((setNum) => {
               const log = getLog(weekNum, setNum);

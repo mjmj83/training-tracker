@@ -26,6 +26,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const dragSourceId = useRef<number | null>(null);
   const [showDeleteDayConfirm, setShowDeleteDayConfirm] = useState(false);
+  const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
 
   const updateDay = useMutation({
     mutationFn: (data: { name: string }) =>
@@ -157,7 +158,12 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                 <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[60px]">Tempo</th>
                 <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">Rest</th>
                 {weeks.map((w) => (
-                  <th key={w} className="text-center py-1.5 px-1 font-medium text-muted-foreground min-w-[120px]">
+                  <th
+                    key={w}
+                    className={`text-center py-1.5 px-1 font-medium text-muted-foreground min-w-[120px] transition-colors ${hoveredWeek === w ? "bg-primary/10" : ""}`}
+                    onMouseEnter={() => setHoveredWeek(w)}
+                    onMouseLeave={() => setHoveredWeek(null)}
+                  >
                     <div className="flex flex-col items-center gap-0.5">
                       <span>W{w}</span>
                       <WeekDateInput
@@ -191,6 +197,8 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                     onDragLeave={handleDragLeave}
                     onDrop={() => handleDrop(ex.id)}
                     onBeforeChange={onBeforeChange}
+                    hoveredWeek={hoveredWeek}
+                    onWeekHover={setHoveredWeek}
                   />
                 ));
               })}
