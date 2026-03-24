@@ -49,6 +49,9 @@ export function AppSidebar() {
   const [editingMonthId, setEditingMonthId] = useState<number | null>(null);
   const [editingMonthLabel, setEditingMonthLabel] = useState("");
 
+  const [editingClientId, setEditingClientId] = useState<number | null>(null);
+  const [editingClientName, setEditingClientName] = useState("");
+
   // Confirm dialog state
   const [confirmDelete, setConfirmDelete] = useState<{
     type: "client" | "month";
@@ -80,6 +83,15 @@ export function AppSidebar() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setClientId(null);
+    },
+  });
+
+  const updateClientName = useMutation({
+    mutationFn: (data: { id: number; name: string }) =>
+      apiRequest("PATCH", `/api/clients/${data.id}`, { name: data.name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      setEditingClientId(null);
     },
   });
 
@@ -202,17 +214,54 @@ export function AppSidebar() {
                     data-testid={`button-client-${client.id}`}
                   >
                     <Users className="w-4 h-4" />
-                    <span className="flex-1 truncate">{client.name}</span>
-                    <button
-                      className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDelete({ type: "client", id: client.id, label: client.name });
-                      }}
-                      data-testid={`button-delete-client-${client.id}`}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    {editingClientId === client.id ? (
+                      <input
+                        value={editingClientName}
+                        onChange={(e) => setEditingClientName(e.target.value)}
+                        onBlur={() => {
+                          if (editingClientName.trim()) {
+                            updateClientName.mutate({ id: client.id, name: editingClientName.trim() });
+                          } else {
+                            setEditingClientId(null);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && editingClientName.trim()) {
+                            updateClientName.mutate({ id: client.id, name: editingClientName.trim() });
+                          }
+                          if (e.key === "Escape") setEditingClientId(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-transparent border-none outline-none text-sm focus:ring-0"
+                        autoFocus
+                        data-testid={`input-client-name-${client.id}`}
+                      />
+                    ) : (
+                      <span className="flex-1 truncate">{client.name}</span>
+                    )}
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingClientId(client.id);
+                          setEditingClientName(client.name);
+                        }}
+                        className="hover:text-primary"
+                        data-testid={`button-edit-client-${client.id}`}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        className="hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete({ type: "client", id: client.id, label: client.name });
+                        }}
+                        data-testid={`button-delete-client-${client.id}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
