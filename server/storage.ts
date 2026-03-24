@@ -2,6 +2,8 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { eq, and, like } from "drizzle-orm";
 import bcryptjs from "bcryptjs";
+import fs from "fs";
+import path from "path";
 import {
   clients, type Client, type InsertClient,
   abcMeasurements, type AbcMeasurement, type InsertAbcMeasurement,
@@ -18,8 +20,16 @@ import {
 } from "@shared/schema";
 
 const dbPath = process.env.DATABASE_PATH || "training.db";
+
+// Ensure the directory exists
+const dbDir = path.dirname(dbPath);
+if (dbDir !== "." && !fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+const dbExisted = fs.existsSync(dbPath);
 const sqlite = new Database(dbPath);
-console.log(`Database: ${dbPath}`);
+console.log(`Database: ${dbPath} (existed: ${dbExisted}, size: ${dbExisted ? fs.statSync(dbPath).size : 0} bytes)`);
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 
@@ -171,6 +181,13 @@ try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
       }
     }
   }
+}
+// Log DB state on startup
+{
+  const uCount = db.select().from(users).all().length;
+  const cCount = db.select().from(credentials).all().length;
+  const sCount = db.select().from(sessions).all().length;
+  console.log(`[startup] Users: ${uCount}, Credentials: ${cCount}, Sessions: ${sCount}`);
 }
 
 export class SqliteStorage {
