@@ -179,15 +179,21 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
   })();
 
   const sorted = [...measurements].sort((a, b) => a.date.localeCompare(b.date));
-  const chartData = sorted.map(m => ({
-    date: new Date(m.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }),
-    bodyFatPct: m.bodyFatPct,
-    heightCm: m.heightCm,
-    neckCm: m.neckCm,
-    abdomenCm: m.abdomenCm,
-    hipCm: m.hipCm,
-    weightKg: m.weightKg,
-  }));
+  const chartData = sorted.map(m => {
+    const fatKg = m.weightKg ? Math.round((m.bodyFatPct / 100) * m.weightKg * 10) / 10 : null;
+    const leanKg = m.weightKg && fatKg !== null ? Math.round((m.weightKg - fatKg) * 10) / 10 : null;
+    return {
+      date: new Date(m.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }),
+      bodyFatPct: m.bodyFatPct,
+      bodyFatKg: fatKg,
+      leanMassKg: leanKg,
+      heightCm: m.heightCm,
+      neckCm: m.neckCm,
+      abdomenCm: m.abdomenCm,
+      hipCm: m.hipCm,
+      weightKg: m.weightKg,
+    };
+  });
 
   return (
     <div className="space-y-6" data-testid="abc-calculator">
@@ -241,9 +247,22 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
 
           {/* Preview */}
           {previewBf !== null && (
-            <div className="bg-muted/50 rounded-md px-3 py-2 text-center">
-              <span className="text-xs text-muted-foreground">Geschat vetpercentage: </span>
-              <span className="text-lg font-bold text-primary">{previewBf}%</span>
+            <div className="bg-muted/50 rounded-md px-3 py-2 text-center space-y-0.5">
+              <div>
+                <span className="text-xs text-muted-foreground">Vetpercentage: </span>
+                <span className="text-lg font-bold text-primary">{previewBf}%</span>
+              </div>
+              {weightKg && (() => {
+                const w = parseFloat(weightKg);
+                const fatKg = Math.round((previewBf / 100) * w * 10) / 10;
+                const leanKg = Math.round((w - fatKg) * 10) / 10;
+                return (
+                  <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+                    <span>Body Fat: <span className="font-medium text-foreground">{fatKg} kg</span></span>
+                    <span>Lean Mass: <span className="font-medium text-foreground">{leanKg} kg</span></span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -264,8 +283,14 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
           <MiniChart title="Buikomtrek" icon={<Ruler className="w-4 h-4 text-primary" />}
             data={chartData} dataKey="abdomenCm" unit=" cm" color="hsl(var(--chart-3))" />
           {chartData.some(d => d.weightKg) && (
-            <MiniChart title="Gewicht" icon={<Weight className="w-4 h-4 text-primary" />}
-              data={chartData.filter(d => d.weightKg)} dataKey="weightKg" unit=" kg" color="hsl(var(--chart-4))" />
+            <>
+              <MiniChart title="Gewicht" icon={<Weight className="w-4 h-4 text-primary" />}
+                data={chartData.filter(d => d.weightKg)} dataKey="weightKg" unit=" kg" color="hsl(var(--chart-4))" />
+              <MiniChart title="Body Fat (kg)" icon={<TrendingDown className="w-4 h-4 text-primary" />}
+                data={chartData.filter(d => d.bodyFatKg !== null)} dataKey="bodyFatKg" unit=" kg" color="hsl(var(--chart-5, var(--chart-1)))" />
+              <MiniChart title="Lean Mass (kg)" icon={<Weight className="w-4 h-4 text-primary" />}
+                data={chartData.filter(d => d.leanMassKg !== null)} dataKey="leanMassKg" unit=" kg" color="hsl(var(--chart-2))" />
+            </>
           )}
         </>
       )}
@@ -281,6 +306,12 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
                   {new Date(m.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" })}
                 </span>
                 <span className="font-semibold text-primary">{m.bodyFatPct}%</span>
+                {m.weightKg ? (
+                  <>
+                    <span className="text-muted-foreground">{Math.round((m.bodyFatPct / 100) * m.weightKg * 10) / 10} kg vet</span>
+                    <span className="text-muted-foreground">{Math.round((m.weightKg - (m.bodyFatPct / 100) * m.weightKg) * 10) / 10} kg lean</span>
+                  </>
+                ) : null}
                 <span className="text-muted-foreground">nek {m.neckCm}</span>
                 <span className="text-muted-foreground">buik {m.abdomenCm}</span>
                 {m.hipCm ? <span className="text-muted-foreground">heup {m.hipCm}</span> : null}
