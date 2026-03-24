@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Trash2, GripVertical, Unlink, MessageCircleWarning, BarChart3 } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +39,7 @@ export default function ExerciseRow({
   const [rest, setRest] = useState(exercise.rest ?? 60);
   const [notes, setNotes] = useState(exercise.notes ?? "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [, navigate] = useLocation();
   const [showNotesDialog, setShowNotesDialog] = useState(false);
   const [editingNotes, setEditingNotes] = useState("");
 
@@ -233,15 +234,14 @@ export default function ExerciseRow({
         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href={`/charts/${encodeURIComponent(exercise.name)}`}>
-                <Button
-                  size="icon" variant="ghost"
-                  className="h-5 w-5 text-muted-foreground hover:text-primary"
-                  data-testid={`button-chart-${exercise.id}`}
-                >
-                  <BarChart3 className="w-3 h-3" />
-                </Button>
-              </Link>
+              <Button
+                size="icon" variant="ghost"
+                className="h-5 w-5 text-muted-foreground hover:text-primary"
+                onClick={() => navigate(`/charts/${encodeURIComponent(exercise.name)}`)}
+                data-testid={`button-chart-${exercise.id}`}
+              >
+                <BarChart3 className="w-3 h-3" />
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Bekijk chart</TooltipContent>
           </Tooltip>
