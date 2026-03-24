@@ -110,37 +110,46 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
     }
   });
 
-  // POST /api/auth/login/options
+  // POST /api/auth/login/options — with or without email (discoverable credentials)
   app.post("/api/auth/login/options", async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Email is required" });
-
-      const user = storage.getUserByEmail(email);
-      if (!user) return res.status(404).json({ error: "Gebruiker niet gevonden" });
-
-      const userCredentials = storage.getCredentialsByUserId(user.id);
-      if (userCredentials.length === 0) {
-        return res.status(400).json({ error: "Geen passkey geregistreerd. Registreer eerst een passkey." });
-      }
-
       const { rpID } = getRpConfig(req);
 
-      const options = await generateAuthenticationOptions({
-        rpID,
-        allowCredentials: userCredentials.map((c) => ({
-          id: c.credentialId,
-          transports: c.transports
-            ? (JSON.parse(c.transports) as AuthenticatorTransportFuture[])
-            : undefined,
-        })),
-        userVerification: "preferred",
-      });
-
-      const sessionId = crypto.randomBytes(32).toString("hex");
-      storage.createSession(sessionId, user.id, options.challenge);
-
-      res.json({ options, sessionId });
+      if (email) {
+        // Email provided: restrict to that user's credentials
+        const user = storage.getUserByEmail(email);
+        if (!user) return res.status(404).json({ error: "Gebruiker niet gevonden" });
+        const userCredentials = storage.getCredentialsByUserId(user.id);
+        if (userCredentials.length === 0) {
+          return res.status(400).json({ error: "Geen passkey geregistreerd. Registreer eerst een passkey." });
+        }
+        const options = await generateAuthenticationOptions({
+          rpID,
+          allowCredentials: userCredentials.map((c) => ({
+            id: c.credentialId,
+            transports: c.transports ? (JSON.parse(c.transports) as AuthenticatorTransportFuture[]) : undefined,
+          })),
+          userVerification: "preferred",
+        });
+        const sessionId = crypto.randomBytes(32).toString("hex");
+        storage.createSession(sessionId, user.id, options.challenge);
+        res.json({ options, sessionId });
+      } else {
+        // No email: discoverable credential flow — browser picks the passkey
+        const options = await generateAuthenticationOptions({
+          rpID,
+          userVerification: "preferred",
+          // Empty allowCredentials = browser shows all available passkeys for this rpID
+        });
+        // Store challenge in a temporary session (userId=0 placeholder, will be resolved on verify)
+        const sessionId = crypto.randomBytes(32).toString("hex");
+        // Create a temp session — we use userId of first user as placeholder (will be overridden)
+        const anyUser = storage.getUsers()[0];
+        if (!anyUser) return res.status(400).json({ error: "Geen gebruikers gevonden" });
+        storage.createSession(sessionId, anyUser.id, options.challenge);
+        res.json({ options, sessionId });
+      }
     } catch (e: any) {
       console.error("login/options error:", e);
       res.status(500).json({ error: e.message });
@@ -184,11 +193,13 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
       storage.updateCredentialCounter(credential.credentialId, verification.authenticationInfo.newCounter);
 
       // Delete temp session, create authenticated session
+      // Use credential's userId (handles discoverable credential flow where session userId was a placeholder)
+      const authenticatedUserId = credential.userId;
       storage.deleteSession(sessionId);
       const newSessionId = crypto.randomBytes(32).toString("hex");
-      storage.createSession(newSessionId, session.userId);
+      storage.createSession(newSessionId, authenticatedUserId);
 
-      const user = storage.getUserById(session.userId);
+      const user = storage.getUserById(authenticatedUserId);
       res.json({ verified: true, sessionId: newSessionId, user });
     } catch (e: any) {
       console.error("login/verify error:", e);
