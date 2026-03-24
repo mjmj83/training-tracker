@@ -1,7 +1,7 @@
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dumbbell, Undo2, Redo2, Save } from "lucide-react";
+import { Dumbbell, Undo2, Redo2, Save, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import TrainingDaySection from "@/components/training-day-section";
@@ -87,7 +87,10 @@ export default function TrainingPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
         <Dumbbell className="w-10 h-10 opacity-30" />
-        <p className="text-sm">Maak een nieuwe maand aan</p>
+        <p className="text-sm">Maak een nieuw trainingsblok aan</p>
+        <div className="flex items-center gap-2">
+          <MonthSwitcher />
+        </div>
       </div>
     );
   }
