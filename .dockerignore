@@ -1,0 +1,6 @@
+node_modules
+dist
+.git
+training.db
+training.db-wal
+training.db-shm

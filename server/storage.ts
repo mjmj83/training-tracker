@@ -17,7 +17,9 @@ import {
   sessions, type Session,
 } from "@shared/schema";
 
-const sqlite = new Database("training.db");
+const dbPath = process.env.DATABASE_PATH || "training.db";
+const sqlite = new Database(dbPath);
+console.log(`Database: ${dbPath}`);
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 
