@@ -1,6 +1,8 @@
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useRoute } from "wouter";
+import { useEffect, useRef } from "react";
 import { BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,7 +24,6 @@ interface FullMonthData {
   weekDates: WeekDate[];
 }
 
-// Custom tooltip to show weight + reps on hover
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0]?.payload;
@@ -49,11 +50,23 @@ export default function ChartsPage() {
   const { clientId } = useSelectedClient();
   const { monthId } = useSelectedMonth();
 
+  // Check if navigated with a specific exercise name
+  const [, params] = useRoute("/charts/:exerciseName");
+  const highlightName = params?.exerciseName ? decodeURIComponent(params.exerciseName) : null;
+  const highlightRef = useRef<HTMLDivElement>(null);
+
   const { data } = useQuery<FullMonthData>({
     queryKey: ["/api/months", monthId, "full"],
     queryFn: () => apiRequest("GET", `/api/months/${monthId}/full`).then((r) => r.json()),
     enabled: !!monthId,
   });
+
+  // Scroll to highlighted exercise chart
+  useEffect(() => {
+    if (highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [data, highlightName]);
 
   if (!clientId || !monthId) {
     return (
@@ -74,7 +87,6 @@ export default function ChartsPage() {
 
   const weekCount = data.month?.weekCount ?? 4;
 
-  // Build chart data: last set weight per week for each exercise
   const exerciseCharts: {
     name: string;
     day: string;
@@ -91,7 +103,6 @@ export default function ChartsPage() {
         const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
         if (weekLogs.length === 0) continue;
 
-        // Get the last set (highest set number)
         const lastSet = weekLogs.reduce((best, l) =>
           l.setNumber > best.setNumber ? l : best
         , weekLogs[0]);
@@ -124,53 +135,73 @@ export default function ChartsPage() {
     );
   }
 
+  // If a specific exercise is highlighted, show it first
+  const sortedCharts = highlightName
+    ? [...exerciseCharts].sort((a, b) => {
+        if (a.name === highlightName) return -1;
+        if (b.name === highlightName) return 1;
+        return 0;
+      })
+    : exerciseCharts;
+
   return (
     <div className="p-4 space-y-4">
       <h1 className="text-lg font-semibold" data-testid="text-charts-title">
         Progressie overzicht
       </h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {exerciseCharts.map((chart, i) => (
-          <Card key={`${chart.name}-${i}`} data-testid={`chart-${chart.name}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                {chart.name}
-                <span className="text-muted-foreground font-normal ml-2 text-xs">{chart.day}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chart.data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="week"
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    domain={["dataMin - 5", "dataMax + 5"]}
-                    label={{
-                      value: "kg",
-                      angle: -90,
-                      position: "insideLeft",
-                      style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
-                    }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="lastSetWeight"
-                    stroke="hsl(var(--chart-1))"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: "hsl(var(--chart-1))" }}
-                    activeDot={{ r: 6 }}
-                    name="Laatste set (kg)"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        ))}
+        {sortedCharts.map((chart, i) => {
+          const isHighlighted = chart.name === highlightName;
+          return (
+            <div
+              key={`${chart.name}-${i}`}
+              ref={isHighlighted ? highlightRef : undefined}
+            >
+              <Card
+                className={isHighlighted ? "ring-2 ring-primary" : ""}
+                data-testid={`chart-${chart.name}`}
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {chart.name}
+                    <span className="text-muted-foreground font-normal ml-2 text-xs">{chart.day}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={chart.data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        dataKey="week"
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                        domain={["dataMin - 5", "dataMax + 5"]}
+                        label={{
+                          value: "kg",
+                          angle: -90,
+                          position: "insideLeft",
+                          style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
+                        }}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line
+                        type="monotone"
+                        dataKey="lastSetWeight"
+                        stroke="hsl(var(--chart-1))"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "hsl(var(--chart-1))" }}
+                        activeDot={{ r: 6 }}
+                        name="Laatste set (kg)"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
