@@ -217,6 +217,7 @@ export default function ExerciseRow({
                   setNumber={setNum}
                   initialWeight={log?.weight ?? null}
                   initialReps={log?.reps ?? null}
+                  initialNotes={log?.notes ?? ""}
                   monthId={monthId}
                   onBeforeChange={onBeforeChange}
                 />

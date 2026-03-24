@@ -64,7 +64,8 @@ sqlite.exec(`
     week_number INTEGER NOT NULL,
     set_number INTEGER NOT NULL,
     weight REAL,
-    reps INTEGER
+    reps INTEGER,
+    notes TEXT DEFAULT ''
   );
   CREATE TABLE IF NOT EXISTS exercise_library (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,6 +83,7 @@ sqlite.exec(`
 try { sqlite.exec("ALTER TABLE months ADD COLUMN week_count INTEGER NOT NULL DEFAULT 4"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN superset_group_id INTEGER"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
+try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 
 export class SqliteStorage {
   // Clients
@@ -217,7 +219,7 @@ export class SqliteStorage {
     const existing = db.select().from(weightLogs).where(and(
       eq(weightLogs.exerciseId, data.exerciseId), eq(weightLogs.weekNumber, data.weekNumber), eq(weightLogs.setNumber, data.setNumber)
     )).get();
-    if (existing) return db.update(weightLogs).set({ weight: data.weight, reps: data.reps }).where(eq(weightLogs.id, existing.id)).returning().get();
+    if (existing) return db.update(weightLogs).set({ weight: data.weight, reps: data.reps, notes: data.notes ?? existing.notes }).where(eq(weightLogs.id, existing.id)).returning().get();
     return db.insert(weightLogs).values(data).returning().get();
   }
 
@@ -285,7 +287,7 @@ export class SqliteStorage {
         for (const log of exData.weightLogs || []) {
           db.insert(weightLogs).values({
             exerciseId: newEx.id, weekNumber: log.weekNumber,
-            setNumber: log.setNumber, weight: log.weight, reps: log.reps,
+            setNumber: log.setNumber, weight: log.weight, reps: log.reps, notes: log.notes || "",
           }).run();
         }
       }

@@ -78,6 +78,7 @@ export const weightLogs = sqliteTable("weight_logs", {
   setNumber: integer("set_number").notNull(), // 1-5
   weight: real("weight"), // kg
   reps: integer("reps"), // actual reps achieved
+  notes: text("notes").default(""), // per-set notes
 });
 
 export const insertWeightLogSchema = createInsertSchema(weightLogs).omit({ id: true });
