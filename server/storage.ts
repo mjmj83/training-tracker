@@ -113,15 +113,6 @@ try { sqlite.exec("ALTER TABLE clients ADD COLUMN owner_id INTEGER"); } catch {}
 try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN owner_id INTEGER"); } catch {}
 try { sqlite.exec("DROP INDEX IF EXISTS exercise_library_name_unique"); } catch {}
 
-// Assign unowned clients and exercise library entries to the first trainer
-{
-  const firstTrainer = sqlite.prepare("SELECT id FROM users WHERE role = 'trainer' LIMIT 1").get() as any;
-  if (firstTrainer) {
-    sqlite.exec(`UPDATE clients SET owner_id = ${firstTrainer.id} WHERE owner_id IS NULL`);
-    sqlite.exec(`UPDATE exercise_library SET owner_id = ${firstTrainer.id} WHERE owner_id IS NULL`);
-  }
-}
-
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS abc_measurements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -196,12 +187,33 @@ try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
     }
   }
 }
+// Assign unowned clients and exercise library entries to the first trainer
+{
+  const firstTrainer = db.select().from(users).all().find(u => u.role === "trainer");
+  if (firstTrainer) {
+    const unownedClients = db.select().from(clients).all().filter(c => !c.ownerId);
+    for (const c of unownedClients) {
+      db.update(clients).set({ ownerId: firstTrainer.id }).where(eq(clients.id, c.id)).run();
+    }
+    const unownedLib = db.select().from(exerciseLibrary).all().filter(e => !(e as any).ownerId);
+    for (const e of unownedLib) {
+      db.update(exerciseLibrary).set({ ownerId: firstTrainer.id } as any).where(eq(exerciseLibrary.id, e.id)).run();
+    }
+    if (unownedClients.length > 0 || unownedLib.length > 0) {
+      console.log(`[migration] Assigned ${unownedClients.length} clients and ${unownedLib.length} library entries to trainer ${firstTrainer.email} (id=${firstTrainer.id})`);
+    }
+  }
+}
+
 // Log DB state on startup
 {
   const uCount = db.select().from(users).all().length;
   const cCount = db.select().from(credentials).all().length;
   const sCount = db.select().from(sessions).all().length;
+  const clientsWithOwner = db.select().from(clients).all().filter(c => c.ownerId);
+  const clientsWithoutOwner = db.select().from(clients).all().filter(c => !c.ownerId);
   console.log(`[startup] Users: ${uCount}, Credentials: ${cCount}, Sessions: ${sCount}`);
+  console.log(`[startup] Clients with owner: ${clientsWithOwner.length}, without owner: ${clientsWithoutOwner.length}`);
 }
 
 export class SqliteStorage {
