@@ -434,12 +434,13 @@ export class SqliteStorage {
   getUsers(): User[] {
     return db.select().from(users).all();
   }
-  createUser(data: { email: string; displayName: string; role?: string; clientId?: number | null }): User {
+  createUser(data: { email: string; displayName: string; role?: string; clientId?: number | null; pinHash?: string }): User {
     return db.insert(users).values({
       email: data.email,
       displayName: data.displayName,
       role: data.role ?? "client",
       clientId: data.clientId ?? null,
+      pinHash: data.pinHash ?? null,
     }).returning().get();
   }
   updateUser(id: number, data: Partial<{ email: string; displayName: string; role: string; clientId: number | null; pinHash: string }>): User | undefined {

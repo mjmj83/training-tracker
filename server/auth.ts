@@ -281,6 +281,12 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
       // Check if email is already taken
       const existing = storage.getUserByEmail(email);
       if (existing) {
+        // If account exists but has no pin, update it
+        if (!existing.pinHash) {
+          const pinHash = bcryptjs.hashSync(pin, 10);
+          storage.updateUser(existing.id, { pinHash, clientId, role: "client" });
+          return res.json({ ok: true, user: { id: existing.id, email: existing.email, displayName: existing.displayName, role: "client", clientId } });
+        }
         return res.status(400).json({ error: "Dit e-mailadres is al in gebruik" });
       }
 
