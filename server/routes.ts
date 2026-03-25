@@ -20,11 +20,15 @@ export function registerRoutes(server: Server, app: Express): void {
   // ============= CLIENTS =============
   app.get("/api/clients", (req, res) => {
     const user = (req as any).user;
+    console.log(`[GET /api/clients] user: id=${user.id} email=${user.email} role=${user.role}`);
     if (user.role === "client" && user.clientId) {
       const client = storage.getClient(user.clientId);
       return res.json(client ? [client] : []);
     }
-    res.json(storage.getClientsByOwner(user.id));
+    const ownedClients = storage.getClientsByOwner(user.id);
+    const allClients = storage.getClients();
+    console.log(`[GET /api/clients] owned: ${ownedClients.length}, total: ${allClients.length}, owners: ${allClients.map(c => c.ownerId).join(',')}`);
+    res.json(ownedClients);
   });
   app.post("/api/clients", (req, res) => {
     const user = (req as any).user;
