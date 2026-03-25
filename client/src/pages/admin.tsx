@@ -1,7 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { Shield, Users, Dumbbell } from "lucide-react";
+import { Shield, Users, Dumbbell, Trash2 } from "lucide-react";
+import { useState } from "react";
+import ConfirmDialog from "@/components/confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -50,6 +52,16 @@ export default function AdminPage() {
     );
   }
 
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; email: string } | null>(null);
+
+  const deleteUser = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/users/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setConfirmDelete(null);
+    },
+  });
+
   const trainers = users.filter(u => u.role === "trainer");
   const clients = users.filter(u => u.role === "client");
 
@@ -92,6 +104,13 @@ export default function AdminPage() {
                         </span>
                       ) : (
                         <span className="text-muted-foreground/50">Geen</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {t.email !== "mariusjansen@gmail.com" && (
+                        <button onClick={() => setConfirmDelete({ id: t.id, email: t.email })} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       )}
                     </TableCell>
                   </TableRow>
@@ -138,6 +157,11 @@ export default function AdminPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {c.trainerEmail || "—"}
                     </TableCell>
+                    <TableCell>
+                      <button onClick={() => setConfirmDelete({ id: c.id, email: c.email })} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -145,6 +169,15 @@ export default function AdminPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+        title="Gebruiker verwijderen?"
+        description={confirmDelete ? `"${confirmDelete.email}" wordt permanent verwijderd inclusief alle passkeys en sessies.` : ""}
+        onConfirm={() => {
+          if (confirmDelete) deleteUser.mutate(confirmDelete.id);
+        }}
+      />
     </div>
   );
 }

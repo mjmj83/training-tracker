@@ -446,6 +446,11 @@ export class SqliteStorage {
   updateUser(id: number, data: Partial<{ email: string; displayName: string; role: string; clientId: number | null; pinHash: string }>): User | undefined {
     return db.update(users).set(data).where(eq(users.id, id)).returning().get();
   }
+  deleteUser(id: number): void {
+    db.delete(credentials).where(eq(credentials.userId, id)).run();
+    db.delete(sessions).where(eq(sessions.userId, id)).run();
+    db.delete(users).where(eq(users.id, id)).run();
+  }
 
   // ===== AUTH: Credentials =====
   getCredentialsByUserId(userId: number): Credential[] {

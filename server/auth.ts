@@ -393,6 +393,20 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
     res.json(result);
   });
 
+  // DELETE /api/admin/users/:id — admin deletes any user
+  app.delete("/api/admin/users/:id", (req: Request, res: Response) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: "Geen toegang" });
+    const userId = parseInt(req.params.id);
+    // Don't allow deleting yourself
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    const session = storage.getSession(token!);
+    if (session?.user?.id === userId) {
+      return res.status(400).json({ error: "Je kunt jezelf niet verwijderen" });
+    }
+    storage.deleteUser(userId);
+    res.json({ ok: true });
+  });
+
   // GET /api/auth/me
   app.get("/api/auth/me", (req: Request, res: Response) => {
     const token = req.headers.authorization?.replace("Bearer ", "");
