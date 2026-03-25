@@ -9,6 +9,7 @@ import AddTrainingDay from "@/components/add-training-day";
 import WeekCountSelector from "@/components/week-count-selector";
 import MonthSwitcher from "@/components/month-switcher";
 import { useUndoRedo } from "@/lib/undo-redo";
+import { useIsTrainer } from "@/hooks/use-is-trainer";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 import { useEffect, useCallback } from "react";
 import { useQuery as useQueryAuto } from "@tanstack/react-query";
@@ -26,6 +27,7 @@ export default function TrainingPage() {
   const { monthId, setMonthId } = useSelectedMonth();
   const { toast } = useToast();
   const { canUndo, canRedo, undo, redo, pushSnapshot, undoCount, redoCount } = useUndoRedo(monthId);
+  const isTrainer = useIsTrainer();
 
   const { data, isLoading } = useQuery<FullMonthData>({
     queryKey: ["/api/months", monthId, "full"],
@@ -41,6 +43,7 @@ export default function TrainingPage() {
   });
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isTrainer) return; // No keyboard shortcuts for clients
     if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
       e.preventDefault();
       if (canUndo) undo();
@@ -53,7 +56,7 @@ export default function TrainingPage() {
       e.preventDefault();
       if (monthId) saveState.mutate();
     }
-  }, [canUndo, canRedo, undo, redo, monthId]);
+  }, [canUndo, canRedo, undo, redo, monthId, isTrainer]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -87,9 +90,9 @@ export default function TrainingPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
         <Dumbbell className="w-10 h-10 opacity-30" />
-        <p className="text-sm">Maak een nieuw trainingsblok aan</p>
+        <p className="text-sm">{isTrainer ? "Maak een nieuw trainingsblok aan" : "Geen trainingsblokken beschikbaar"}</p>
         <div className="flex items-center gap-2">
-          <MonthSwitcher />
+          <MonthSwitcher readOnly={!isTrainer} />
         </div>
       </div>
     );
@@ -112,47 +115,49 @@ export default function TrainingPage() {
     <div className="p-4 space-y-2">
       {/* Toolbar */}
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
-        <MonthSwitcher />
+        <MonthSwitcher readOnly={!isTrainer} />
         <div className="flex-1" />
-        <div className="flex items-center gap-1">
-          <WeekCountSelector monthId={monthId} currentCount={weekCount} />
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => { if (canUndo) undo(); }}
-            disabled={!canUndo}
-            className="h-7 px-2 text-xs gap-1"
-            data-testid="button-undo"
-            title={`Ongedaan maken (${undoCount})`}
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Undo</span>
-            {undoCount > 0 && <span className="text-muted-foreground">({undoCount})</span>}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => { if (canRedo) redo(); }}
-            disabled={!canRedo}
-            className="h-7 px-2 text-xs gap-1"
-            data-testid="button-redo"
-            title={`Opnieuw (${redoCount})`}
-          >
-            <Redo2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Redo</span>
-            {redoCount > 0 && <span className="text-muted-foreground">({redoCount})</span>}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => saveState.mutate()}
-            className="h-7 px-2 text-xs gap-1"
-            data-testid="button-save"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Opslaan</span>
-          </Button>
-        </div>
+        {isTrainer && (
+          <div className="flex items-center gap-1">
+            <WeekCountSelector monthId={monthId} currentCount={weekCount} />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { if (canUndo) undo(); }}
+              disabled={!canUndo}
+              className="h-7 px-2 text-xs gap-1"
+              data-testid="button-undo"
+              title={`Ongedaan maken (${undoCount})`}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Undo</span>
+              {undoCount > 0 && <span className="text-muted-foreground">({undoCount})</span>}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { if (canRedo) redo(); }}
+              disabled={!canRedo}
+              className="h-7 px-2 text-xs gap-1"
+              data-testid="button-redo"
+              title={`Opnieuw (${redoCount})`}
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Redo</span>
+              {redoCount > 0 && <span className="text-muted-foreground">({redoCount})</span>}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => saveState.mutate()}
+              className="h-7 px-2 text-xs gap-1"
+              data-testid="button-save"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Opslaan</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {trainingDays
@@ -166,9 +171,12 @@ export default function TrainingPage() {
             monthId={monthId}
             weekCount={weekCount}
             onBeforeChange={pushSnapshot}
+            readOnly={!isTrainer}
           />
         ))}
-      <AddTrainingDay monthId={monthId} sortOrder={trainingDays.length} onBeforeChange={pushSnapshot} />
+      {isTrainer && (
+        <AddTrainingDay monthId={monthId} sortOrder={trainingDays.length} onBeforeChange={pushSnapshot} />
+      )}
     </div>
   );
 }

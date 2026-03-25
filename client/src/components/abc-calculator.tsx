@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import ConfirmDialog from "@/components/confirm-dialog";
+import { useIsTrainer } from "@/hooks/use-is-trainer";
 import type { AbcMeasurement } from "@shared/schema";
 
 interface Props {
@@ -99,6 +100,7 @@ function MiniChart({ title, icon, data, dataKey, unit, color }: {
 }
 
 export default function AbcCalculator({ clientId, clientGender }: Props) {
+  const isTrainer = useIsTrainer();
   const gender = clientGender;
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
@@ -197,81 +199,83 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
 
   return (
     <div className="space-y-6" data-testid="abc-calculator">
-      {/* Input form */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Calculator className="w-4 h-4 text-primary" />
-            Nieuwe meting (AR 600-9)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Row 1: Datum + Lengte + Gewicht (optional) */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Datum</label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="text-xs h-8" data-testid="input-abc-date" />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Lengte (cm)</label>
-              <Input type="number" step="0.5" value={heightCm} onChange={(e) => setHeightCm(e.target.value)}
-                placeholder="bijv. 180" className="text-xs h-8" data-testid="input-abc-height" />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Gewicht (kg) <span className="normal-case opacity-60">optioneel</span></label>
-              <Input type="number" step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)}
-                placeholder="bijv. 85" className="text-xs h-8" data-testid="input-abc-weight" />
-            </div>
-          </div>
-
-          {/* Row 2: Nek + Buik + Heup (vrouw) */}
-          <div className={`grid gap-2 ${gender === "female" ? "grid-cols-3" : "grid-cols-2"}`}>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Nek (cm)</label>
-              <Input type="number" step="0.5" value={neckCm} onChange={(e) => setNeckCm(e.target.value)}
-                placeholder="bijv. 38" className="text-xs h-8" data-testid="input-abc-neck" />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Buikomtrek (cm)</label>
-              <Input type="number" step="0.5" value={abdomenCm} onChange={(e) => setAbdomenCm(e.target.value)}
-                placeholder="bijv. 88" className="text-xs h-8" data-testid="input-abc-abdomen" />
-            </div>
-            {gender === "female" && (
+      {/* Input form — trainers only */}
+      {isTrainer && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Calculator className="w-4 h-4 text-primary" />
+              Nieuwe meting (AR 600-9)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Row 1: Datum + Lengte + Gewicht (optional) */}
+            <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Heup (cm)</label>
-                <Input type="number" step="0.5" value={hipCm} onChange={(e) => setHipCm(e.target.value)}
-                  placeholder="bijv. 100" className="text-xs h-8" data-testid="input-abc-hip" />
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Datum</label>
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="text-xs h-8" data-testid="input-abc-date" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Lengte (cm)</label>
+                <Input type="number" step="0.5" value={heightCm} onChange={(e) => setHeightCm(e.target.value)}
+                  placeholder="bijv. 180" className="text-xs h-8" data-testid="input-abc-height" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Gewicht (kg) <span className="normal-case opacity-60">optioneel</span></label>
+                <Input type="number" step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)}
+                  placeholder="bijv. 85" className="text-xs h-8" data-testid="input-abc-weight" />
+              </div>
+            </div>
+
+            {/* Row 2: Nek + Buik + Heup (vrouw) */}
+            <div className={`grid gap-2 ${gender === "female" ? "grid-cols-3" : "grid-cols-2"}`}>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Nek (cm)</label>
+                <Input type="number" step="0.5" value={neckCm} onChange={(e) => setNeckCm(e.target.value)}
+                  placeholder="bijv. 38" className="text-xs h-8" data-testid="input-abc-neck" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Buikomtrek (cm)</label>
+                <Input type="number" step="0.5" value={abdomenCm} onChange={(e) => setAbdomenCm(e.target.value)}
+                  placeholder="bijv. 88" className="text-xs h-8" data-testid="input-abc-abdomen" />
+              </div>
+              {gender === "female" && (
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Heup (cm)</label>
+                  <Input type="number" step="0.5" value={hipCm} onChange={(e) => setHipCm(e.target.value)}
+                    placeholder="bijv. 100" className="text-xs h-8" data-testid="input-abc-hip" />
+                </div>
+              )}
+            </div>
+
+            {/* Preview */}
+            {previewBf !== null && (
+              <div className="bg-muted/50 rounded-md px-3 py-2 text-center space-y-0.5">
+                <div>
+                  <span className="text-xs text-muted-foreground">Vetpercentage: </span>
+                  <span className="text-lg font-bold text-primary">{previewBf}%</span>
+                </div>
+                {weightKg && (() => {
+                  const w = parseFloat(weightKg);
+                  const fatKg = Math.round((previewBf / 100) * w * 10) / 10;
+                  const leanKg = Math.round((w - fatKg) * 10) / 10;
+                  return (
+                    <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+                      <span>Body Fat: <span className="font-medium text-foreground">{fatKg} kg</span></span>
+                      <span>Lean Mass: <span className="font-medium text-foreground">{leanKg} kg</span></span>
+                    </div>
+                  );
+                })()}
               </div>
             )}
-          </div>
 
-          {/* Preview */}
-          {previewBf !== null && (
-            <div className="bg-muted/50 rounded-md px-3 py-2 text-center space-y-0.5">
-              <div>
-                <span className="text-xs text-muted-foreground">Vetpercentage: </span>
-                <span className="text-lg font-bold text-primary">{previewBf}%</span>
-              </div>
-              {weightKg && (() => {
-                const w = parseFloat(weightKg);
-                const fatKg = Math.round((previewBf / 100) * w * 10) / 10;
-                const leanKg = Math.round((w - fatKg) * 10) / 10;
-                return (
-                  <div className="flex justify-center gap-4 text-xs text-muted-foreground">
-                    <span>Body Fat: <span className="font-medium text-foreground">{fatKg} kg</span></span>
-                    <span>Lean Mass: <span className="font-medium text-foreground">{leanKg} kg</span></span>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          <Button size="sm" onClick={handleCalculate} disabled={!canCalculate()}
-            className="w-full text-xs" data-testid="button-abc-save">
-            Meting opslaan
-          </Button>
-        </CardContent>
-      </Card>
+            <Button size="sm" onClick={handleCalculate} disabled={!canCalculate()}
+              className="w-full text-xs" data-testid="button-abc-save">
+              Meting opslaan
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts */}
       {chartData.length > 0 && (
@@ -318,29 +322,33 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
                 {m.weightKg ? <span className="text-muted-foreground">{m.weightKg} kg</span> : null}
                 <span className="text-muted-foreground/60">{m.gender === "male" ? "M" : "V"}</span>
                 <div className="flex-1" />
-                <button
-                  onClick={() => setConfirmDeleteId(m.id)}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                  data-testid={`button-delete-abc-${m.id}`}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                {isTrainer && (
+                  <button
+                    onClick={() => setConfirmDeleteId(m.id)}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    data-testid={`button-delete-abc-${m.id}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <ConfirmDialog
-        open={!!confirmDeleteId}
-        onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}
-        title="Meting verwijderen?"
-        description="Deze meting wordt permanent verwijderd."
-        onConfirm={() => {
-          if (confirmDeleteId) deleteMeasurement.mutate(confirmDeleteId);
-          setConfirmDeleteId(null);
-        }}
-      />
+      {isTrainer && (
+        <ConfirmDialog
+          open={!!confirmDeleteId}
+          onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}
+          title="Meting verwijderen?"
+          description="Deze meting wordt permanent verwijderd."
+          onConfirm={() => {
+            if (confirmDeleteId) deleteMeasurement.mutate(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

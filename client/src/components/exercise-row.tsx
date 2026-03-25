@@ -27,6 +27,7 @@ interface Props {
   onBeforeChange: () => void;
   hoveredWeek: number | null;
   onWeekHover: (week: number | null) => void;
+  readOnly?: boolean;
 }
 
 export default function ExerciseRow({
@@ -34,6 +35,7 @@ export default function ExerciseRow({
   isSuperset, isFirstInSuperset, isLastInSuperset,
   isDragOver, onDragStart, onDragOver, onDragLeave, onDrop, onBeforeChange,
   hoveredWeek, onWeekHover,
+  readOnly = false,
 }: Props) {
   const [name, setName] = useState(exercise.name);
   const [sets, setSets] = useState(exercise.sets);
@@ -70,10 +72,11 @@ export default function ExerciseRow({
 
   const handleBlur = useCallback(
     (field: string, value: any) => {
+      if (readOnly) return;
       onBeforeChange();
       updateExercise.mutate({ [field]: value });
     },
-    [updateExercise, onBeforeChange]
+    [updateExercise, onBeforeChange, readOnly]
   );
 
   const getLog = (weekNumber: number, setNumber: number): WeightLog | undefined => {
@@ -99,8 +102,9 @@ export default function ExerciseRow({
   return (
     <tr
       className={`border-b border-border/50 hover:bg-muted/30 transition-colors group ${supersetClass} ${dragOverClass}`}
-      draggable
+      draggable={!readOnly}
       onDragStart={(e) => {
+        if (readOnly) { e.preventDefault(); return; }
         e.dataTransfer.effectAllowed = "move";
         onDragStart();
       }}
@@ -112,16 +116,19 @@ export default function ExerciseRow({
       {/* Drag handle + Exercise Name + Notes */}
       <td className="py-1 px-2">
         <div className="flex items-center gap-1">
-          <GripVertical className="w-3 h-3 text-muted-foreground/40 cursor-grab shrink-0" />
+          {!readOnly && (
+            <GripVertical className="w-3 h-3 text-muted-foreground/40 cursor-grab shrink-0" />
+          )}
           {isSuperset && (
             <span className="text-[9px] text-primary font-bold shrink-0 mr-0.5">SS</span>
           )}
           <div className="flex-1 min-w-0">
             <input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { if (!readOnly) setName(e.target.value); }}
               onBlur={() => handleBlur("name", name)}
               className="w-full bg-transparent border-none outline-none text-xs font-medium"
+              readOnly={readOnly}
               data-testid={`input-exercise-name-${exercise.id}`}
             />
             {/* Personal notes under the name — truncated with tooltip on hover */}
@@ -138,28 +145,30 @@ export default function ExerciseRow({
               </Tooltip>
             )}
           </div>
-          {/* Notes alert icon — tooltip shows notes, click opens edit */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => {
-                  setEditingNotes(notes);
-                  setShowNotesDialog(true);
-                }}
-                className={`shrink-0 transition-opacity ${
-                  hasNotes
-                    ? "text-primary opacity-100"
-                    : "text-muted-foreground/40 opacity-0 group-hover:opacity-100"
-                }`}
-                data-testid={`button-notes-${exercise.id}`}
-              >
-                <MessageCircleWarning className="w-3.5 h-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs text-xs">
-              {hasNotes ? notes : "Opmerking toevoegen"}
-            </TooltipContent>
-          </Tooltip>
+          {/* Notes alert icon — tooltip shows notes, click opens edit (only for trainers) */}
+          {!readOnly && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    setEditingNotes(notes);
+                    setShowNotesDialog(true);
+                  }}
+                  className={`shrink-0 transition-opacity ${
+                    hasNotes
+                      ? "text-primary opacity-100"
+                      : "text-muted-foreground/40 opacity-0 group-hover:opacity-100"
+                  }`}
+                  data-testid={`button-notes-${exercise.id}`}
+                >
+                  <MessageCircleWarning className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs">
+                {hasNotes ? notes : "Opmerking toevoegen"}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </td>
 
@@ -167,9 +176,10 @@ export default function ExerciseRow({
       <td className="py-1 px-1 text-center">
         <input
           type="number" min={1} max={5} value={sets}
-          onChange={(e) => setSets(parseInt(e.target.value) || 1)}
+          onChange={(e) => { if (!readOnly) setSets(parseInt(e.target.value) || 1); }}
           onBlur={() => handleBlur("sets", sets)}
           className="w-full bg-transparent border-none outline-none text-center text-xs tabular-nums"
+          readOnly={readOnly}
           data-testid={`input-sets-${exercise.id}`}
         />
       </td>
@@ -178,9 +188,10 @@ export default function ExerciseRow({
       <td className="py-1 px-1 text-center">
         <input
           type="number" min={1} max={15} value={goalReps}
-          onChange={(e) => setGoalReps(parseInt(e.target.value) || 1)}
+          onChange={(e) => { if (!readOnly) setGoalReps(parseInt(e.target.value) || 1); }}
           onBlur={() => handleBlur("goalReps", goalReps)}
           className="w-full bg-transparent border-none outline-none text-center text-xs tabular-nums"
+          readOnly={readOnly}
           data-testid={`input-reps-${exercise.id}`}
         />
       </td>
@@ -189,10 +200,11 @@ export default function ExerciseRow({
       <td className="py-1 px-1 text-center">
         <input
           value={tempo}
-          onChange={(e) => setTempo(e.target.value)}
+          onChange={(e) => { if (!readOnly) setTempo(e.target.value); }}
           onBlur={() => handleBlur("tempo", tempo)}
           className="w-full bg-transparent border-none outline-none text-center text-xs"
           placeholder="—"
+          readOnly={readOnly}
           data-testid={`input-tempo-${exercise.id}`}
         />
       </td>
@@ -201,9 +213,10 @@ export default function ExerciseRow({
       <td className="py-1 px-1 text-center">
         <input
           type="number" min={5} max={90} step={5} value={rest}
-          onChange={(e) => setRest(parseInt(e.target.value) || 60)}
+          onChange={(e) => { if (!readOnly) setRest(parseInt(e.target.value) || 60); }}
           onBlur={() => handleBlur("rest", rest)}
           className="w-full bg-transparent border-none outline-none text-center text-xs tabular-nums"
+          readOnly={readOnly}
           data-testid={`input-rest-${exercise.id}`}
         />
       </td>
@@ -230,6 +243,7 @@ export default function ExerciseRow({
                   initialNotes={log?.notes ?? ""}
                   monthId={monthId}
                   onBeforeChange={onBeforeChange}
+                  readOnly={readOnly}
                 />
               );
             })}
@@ -253,7 +267,7 @@ export default function ExerciseRow({
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Bekijk chart</TooltipContent>
           </Tooltip>
-          {isSuperset && (
+          {!readOnly && isSuperset && (
             <Button
               size="icon" variant="ghost"
               className="h-5 w-5 text-muted-foreground hover:text-primary"
@@ -264,62 +278,68 @@ export default function ExerciseRow({
               <Unlink className="w-3 h-3" />
             </Button>
           )}
-          <Button
-            size="icon" variant="ghost"
-            className="h-5 w-5 text-muted-foreground hover:text-destructive"
-            onClick={() => setShowDeleteConfirm(true)}
-            data-testid={`button-delete-exercise-${exercise.id}`}
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
+          {!readOnly && (
+            <Button
+              size="icon" variant="ghost"
+              className="h-5 w-5 text-muted-foreground hover:text-destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+              data-testid={`button-delete-exercise-${exercise.id}`}
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          )}
         </div>
-        <ConfirmDialog
-          open={showDeleteConfirm}
-          onOpenChange={setShowDeleteConfirm}
-          title="Are you sure?"
-          description={`"${exercise.name}" wordt verwijderd met alle ingevulde gewichtsdata.`}
-          onConfirm={() => {
-            onBeforeChange();
-            deleteExercise.mutate();
-            setShowDeleteConfirm(false);
-          }}
-        />
-        {/* Notes Dialog */}
-        <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="text-sm">Opmerking — {exercise.name}</DialogTitle>
-            </DialogHeader>
-            <Textarea
-              value={editingNotes}
-              onChange={(e) => setEditingNotes(e.target.value)}
-              placeholder="Bijv. 'Let op de houding van de bovenrug'"
-              className="min-h-[80px] text-sm"
-              data-testid={`textarea-notes-${exercise.id}`}
-            />
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowNotesDialog(false)}
-              >
-                Annuleren
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  onBeforeChange();
-                  setNotes(editingNotes);
-                  updateExercise.mutate({ notes: editingNotes });
-                  setShowNotesDialog(false);
-                }}
-                data-testid={`button-save-notes-${exercise.id}`}
-              >
-                Opslaan
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {!readOnly && (
+          <ConfirmDialog
+            open={showDeleteConfirm}
+            onOpenChange={setShowDeleteConfirm}
+            title="Are you sure?"
+            description={`"${exercise.name}" wordt verwijderd met alle ingevulde gewichtsdata.`}
+            onConfirm={() => {
+              onBeforeChange();
+              deleteExercise.mutate();
+              setShowDeleteConfirm(false);
+            }}
+          />
+        )}
+        {/* Notes Dialog — trainers only */}
+        {!readOnly && (
+          <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-sm">Opmerking — {exercise.name}</DialogTitle>
+              </DialogHeader>
+              <Textarea
+                value={editingNotes}
+                onChange={(e) => setEditingNotes(e.target.value)}
+                placeholder="Bijv. 'Let op de houding van de bovenrug'"
+                className="min-h-[80px] text-sm"
+                data-testid={`textarea-notes-${exercise.id}`}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowNotesDialog(false)}
+                >
+                  Annuleren
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onBeforeChange();
+                    setNotes(editingNotes);
+                    updateExercise.mutate({ notes: editingNotes });
+                    setShowNotesDialog(false);
+                  }}
+                  data-testid={`button-save-notes-${exercise.id}`}
+                >
+                  Opslaan
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </td>
       <ExerciseChartDialog
         exerciseName={showChart ? exercise.name : null}

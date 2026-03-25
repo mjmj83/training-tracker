@@ -15,14 +15,22 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { useIsTrainer } from "@/hooks/use-is-trainer";
 import { useState } from "react";
+import { Redirect } from "wouter";
+
+function ProtectedSettingsPage() {
+  const isTrainer = useIsTrainer();
+  if (!isTrainer) return <Redirect to="/" />;
+  return <SettingsPage />;
+}
 
 function AppRouter() {
   return (
     <Switch>
       <Route path="/" component={TrainingPage} />
       <Route path="/notes" component={NotesPage} />
-      <Route path="/settings" component={SettingsPage} />
+      <Route path="/settings" component={ProtectedSettingsPage} />
       <Route path="/abc" component={AbcPage} />
       <Route path="/charts" component={ChartsPage} />
       <Route path="/charts/:exerciseName" component={ChartsPage} />

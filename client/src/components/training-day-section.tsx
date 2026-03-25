@@ -17,9 +17,10 @@ interface Props {
   monthId: number;
   weekCount: number;
   onBeforeChange: () => void;
+  readOnly?: boolean;
 }
 
-export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange }: Props) {
+export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange, readOnly = false }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(day.name);
@@ -71,10 +72,12 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
   }
 
   const handleDragStart = (exerciseId: number) => {
+    if (readOnly) return;
     dragSourceId.current = exerciseId;
   };
 
   const handleDragOver = (e: React.DragEvent, exerciseId: number) => {
+    if (readOnly) return;
     e.preventDefault();
     if (dragSourceId.current !== null && dragSourceId.current !== exerciseId) {
       setDragOverId(exerciseId);
@@ -86,6 +89,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
   };
 
   const handleDrop = (targetExerciseId: number) => {
+    if (readOnly) return;
     const sourceId = dragSourceId.current;
     if (sourceId && sourceId !== targetExerciseId) {
       onBeforeChange();
@@ -104,7 +108,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
         <button onClick={() => setIsOpen(!isOpen)} className="text-muted-foreground" data-testid={`toggle-day-${day.id}`}>
           {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
-        {isEditingName ? (
+        {!readOnly && isEditingName ? (
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -116,35 +120,39 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
           />
         ) : (
           <span
-            className="text-sm font-semibold cursor-pointer flex-1"
-            onClick={() => setIsEditingName(true)}
+            className={`text-sm font-semibold flex-1 ${!readOnly ? "cursor-pointer" : ""}`}
+            onClick={() => { if (!readOnly) setIsEditingName(true); }}
             data-testid={`text-day-name-${day.id}`}
           >
             {day.name}
           </span>
         )}
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 text-muted-foreground hover:text-destructive"
-          onClick={() => setShowDeleteDayConfirm(true)}
-          data-testid={`button-delete-day-${day.id}`}
-        >
-          <Trash2 className="w-3 h-3" />
-        </Button>
+        {!readOnly && (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+            onClick={() => setShowDeleteDayConfirm(true)}
+            data-testid={`button-delete-day-${day.id}`}
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        )}
       </div>
 
-      <ConfirmDialog
-        open={showDeleteDayConfirm}
-        onOpenChange={setShowDeleteDayConfirm}
-        title="Are you sure?"
-        description={`"${day.name}" wordt verwijderd met alle oefeningen en ingevulde data.`}
-        onConfirm={() => {
-          onBeforeChange();
-          deleteDay.mutate();
-          setShowDeleteDayConfirm(false);
-        }}
-      />
+      {!readOnly && (
+        <ConfirmDialog
+          open={showDeleteDayConfirm}
+          onOpenChange={setShowDeleteDayConfirm}
+          title="Are you sure?"
+          description={`"${day.name}" wordt verwijderd met alle oefeningen en ingevulde data.`}
+          onConfirm={() => {
+            onBeforeChange();
+            deleteDay.mutate();
+            setShowDeleteDayConfirm(false);
+          }}
+        />
+      )}
 
       {/* Exercise Table */}
       {isOpen && (
@@ -171,6 +179,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         trainingDayId={day.id}
                         weekNumber={w}
                         weekDates={weekDates}
+                        readOnly={readOnly}
                       />
                     </div>
                   </th>
@@ -199,12 +208,15 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                     onBeforeChange={onBeforeChange}
                     hoveredWeek={hoveredWeek}
                     onWeekHover={setHoveredWeek}
+                    readOnly={readOnly}
                   />
                 ));
               })}
             </tbody>
           </table>
-          <AddExerciseRow trainingDayId={day.id} monthId={monthId} sortOrder={exercises.length} onBeforeChange={onBeforeChange} />
+          {!readOnly && (
+            <AddExerciseRow trainingDayId={day.id} monthId={monthId} sortOrder={exercises.length} onBeforeChange={onBeforeChange} />
+          )}
         </div>
       )}
     </div>

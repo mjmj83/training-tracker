@@ -4,6 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { NotebookPen, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useIsTrainer } from "@/hooks/use-is-trainer";
 import type { Client } from "@shared/schema";
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 
 export default function ClientNotepad({ clientId }: Props) {
   const { toast } = useToast();
+  const isTrainer = useIsTrainer();
   const [notes, setNotes] = useState("");
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,6 +41,7 @@ export default function ClientNotepad({ clientId }: Props) {
   });
 
   const handleChange = (value: string) => {
+    if (!isTrainer) return;
     setNotes(value);
     setHasUnsaved(true);
 
@@ -63,21 +66,23 @@ export default function ClientNotepad({ clientId }: Props) {
           <NotebookPen className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-semibold">{client?.name ?? "..."} — Notities</h2>
         </div>
-        <div className="flex items-center gap-2">
-          {hasUnsaved && (
-            <span className="text-[10px] text-muted-foreground">Niet opgeslagen</span>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleManualSave}
-            className="h-7 px-2 text-xs gap-1"
-            data-testid="button-save-client-notes"
-          >
-            <Save className="w-3.5 h-3.5" />
-            Opslaan
-          </Button>
-        </div>
+        {isTrainer && (
+          <div className="flex items-center gap-2">
+            {hasUnsaved && (
+              <span className="text-[10px] text-muted-foreground">Niet opgeslagen</span>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleManualSave}
+              className="h-7 px-2 text-xs gap-1"
+              data-testid="button-save-client-notes"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Opslaan
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Notepad area */}
@@ -85,8 +90,9 @@ export default function ClientNotepad({ clientId }: Props) {
         <textarea
           value={notes}
           onChange={(e) => handleChange(e.target.value)}
-          placeholder={"Algemene informatie over de klant...\n\nBijv. blessures, doelen, aandachtspunten, contactgegevens, etc."}
+          placeholder={isTrainer ? "Algemene informatie over de klant...\n\nBijv. blessures, doelen, aandachtspunten, contactgegevens, etc." : ""}
           className="w-full h-full min-h-[300px] bg-transparent border border-border rounded-md p-4 text-sm leading-relaxed outline-none resize-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+          readOnly={!isTrainer}
           data-testid="textarea-client-notes"
         />
       </div>

@@ -8,9 +8,10 @@ interface Props {
   trainingDayId: number;
   weekNumber: number;
   weekDates: WeekDate[];
+  readOnly?: boolean;
 }
 
-export default function WeekDateInput({ monthId, trainingDayId, weekNumber, weekDates }: Props) {
+export default function WeekDateInput({ monthId, trainingDayId, weekNumber, weekDates, readOnly = false }: Props) {
   const existing = weekDates.find(
     (wd) => wd.trainingDayId === trainingDayId && wd.weekNumber === weekNumber
   );
@@ -28,6 +29,17 @@ export default function WeekDateInput({ monthId, trainingDayId, weekNumber, week
       queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
     },
   });
+
+  if (readOnly) {
+    // Show date as text, or empty space
+    if (date) {
+      const formatted = new Date(date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+      return (
+        <span className="text-[10px] text-muted-foreground">{formatted}</span>
+      );
+    }
+    return <span className="text-[10px] text-muted-foreground">&nbsp;</span>;
+  }
 
   return (
     <input

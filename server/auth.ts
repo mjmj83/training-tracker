@@ -260,6 +260,90 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
     }
   });
 
+  // POST /api/auth/create-client-user — trainer creates a login for a client
+  app.post("/api/auth/create-client-user", (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (!token) return res.status(401).json({ error: "Not authenticated" });
+      const session = storage.getSession(token);
+      if (!session || session.user.role !== "trainer") {
+        return res.status(403).json({ error: "Alleen trainers kunnen klant-accounts aanmaken" });
+      }
+
+      const { email, pin, clientId, displayName } = req.body;
+      if (!email || !pin || !clientId) {
+        return res.status(400).json({ error: "Email, PIN en klant zijn vereist" });
+      }
+      if (pin.length < 4) {
+        return res.status(400).json({ error: "PIN moet minimaal 4 tekens zijn" });
+      }
+
+      // Check if email is already taken
+      const existing = storage.getUserByEmail(email);
+      if (existing) {
+        return res.status(400).json({ error: "Dit e-mailadres is al in gebruik" });
+      }
+
+      // Verify the client belongs to this trainer
+      const client = storage.getClient(clientId);
+      if (!client || client.ownerId !== session.user.id) {
+        return res.status(403).json({ error: "Deze klant is niet van jou" });
+      }
+
+      const pinHash = bcryptjs.hashSync(pin, 10);
+      const user = storage.createUser({
+        email,
+        displayName: displayName || client.name,
+        role: "client",
+        clientId,
+        pinHash,
+      });
+
+      res.json({ ok: true, user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, clientId: user.clientId } });
+    } catch (e: any) {
+      console.error("create-client-user error:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /api/auth/client-users — list client users for a trainer
+  app.get("/api/auth/client-users", (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (!token) return res.status(401).json({ error: "Not authenticated" });
+      const session = storage.getSession(token);
+      if (!session || session.user.role !== "trainer") {
+        return res.status(403).json({ error: "Alleen trainers" });
+      }
+
+      const allUsers = storage.getUsers().filter(u => u.role === "client");
+      // Only return client users whose clientId belongs to this trainer
+      const trainerClients = storage.getClientsByOwner(session.user.id);
+      const trainerClientIds = new Set(trainerClients.map(c => c.id));
+      const clientUsers = allUsers.filter(u => u.clientId && trainerClientIds.has(u.clientId));
+
+      res.json(clientUsers.map(u => ({ id: u.id, email: u.email, displayName: u.displayName, role: u.role, clientId: u.clientId })));
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // DELETE /api/auth/client-users/:id — trainer deletes a client user
+  app.delete("/api/auth/client-users/:id", (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (!token) return res.status(401).json({ error: "Not authenticated" });
+      const session = storage.getSession(token);
+      if (!session || session.user.role !== "trainer") {
+        return res.status(403).json({ error: "Alleen trainers" });
+      }
+      // TODO: delete user, their credentials, and sessions
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // GET /api/auth/me
   app.get("/api/auth/me", (req: Request, res: Response) => {
     const token = req.headers.authorization?.replace("Bearer ", "");
@@ -302,6 +386,14 @@ export function authMiddleware(storage: SqliteStorage) {
     }
     (req as any).user = session.user;
     (req as any).sessionId = token;
+
+    // Read-only enforcement for client users
+    if (session.user.role === "client" && req.method !== "GET") {
+      // Allow logout
+      if (req.path === "/api/auth/logout") return next();
+      return res.status(403).json({ error: "Alleen-lezen toegang. Neem contact op met je trainer." });
+    }
+
     next();
   };
 }
