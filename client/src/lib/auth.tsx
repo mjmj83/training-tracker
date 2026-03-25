@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { User } from "@shared/schema";
 import { getAuthToken, setAuthToken } from "./auth-token";
+import { queryClient } from "./queryClient";
 
 interface AuthContextValue {
   user: User | null;
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(newSessionId);
     setSessionId(newSessionId);
     setUser(newUser);
+    queryClient.clear(); // Clear all cached data from previous user
   }, []);
 
   const logout = useCallback(async () => {
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(null);
     setSessionId(null);
     setUser(null);
+    queryClient.clear(); // Clear all cached data
   }, []);
 
   return (
