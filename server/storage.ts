@@ -234,8 +234,16 @@ export class SqliteStorage {
     return db.update(clients).set(data).where(eq(clients.id, id)).returning().get();
   }
   deleteClient(id: number): void {
+    // Delete months and their sub-data
     const monthList = db.select().from(months).where(eq(months.clientId, id)).all();
     for (const month of monthList) { this.deleteMonth(month.id); }
+    // Delete ABC measurements
+    db.delete(abcMeasurements).where(eq(abcMeasurements.clientId, id)).run();
+    // Unlink any users tied to this client (don't delete the user, just unlink)
+    const linkedUsers = db.select().from(users).all().filter(u => u.clientId === id);
+    for (const u of linkedUsers) {
+      db.update(users).set({ clientId: null }).where(eq(users.id, u.id)).run();
+    }
     db.delete(clients).where(eq(clients.id, id)).run();
   }
 

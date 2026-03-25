@@ -28,14 +28,25 @@ interface AdminUser {
 
 export default function AdminPage() {
   const { user } = useAuth();
+  const isAdminUser = user?.email === "mariusjansen@gmail.com";
+
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; email: string } | null>(null);
 
   const { data: users = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
     queryFn: () => apiRequest("GET", "/api/admin/users").then(r => r.json()),
-    enabled: user?.email === "mariusjansen@gmail.com",
+    enabled: isAdminUser,
   });
 
-  if (user?.email !== "mariusjansen@gmail.com") {
+  const deleteUser = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/users/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setConfirmDelete(null);
+    },
+  });
+
+  if (!isAdminUser) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
         <Shield className="w-10 h-10 opacity-30" />
@@ -51,16 +62,6 @@ export default function AdminPage() {
       </div>
     );
   }
-
-  const [confirmDelete, setConfirmDelete] = useState<{ id: number; email: string } | null>(null);
-
-  const deleteUser = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/users/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      setConfirmDelete(null);
-    },
-  });
 
   const trainers = users.filter(u => u.role === "trainer");
   const clients = users.filter(u => u.role === "client");
@@ -90,6 +91,7 @@ export default function AdminPage() {
                   <TableHead className="text-xs">Naam</TableHead>
                   <TableHead className="text-xs">E-mail</TableHead>
                   <TableHead className="text-xs">Klanten</TableHead>
+                  <TableHead className="text-xs w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -140,6 +142,7 @@ export default function AdminPage() {
                   <TableHead className="text-xs">E-mail</TableHead>
                   <TableHead className="text-xs">Klant</TableHead>
                   <TableHead className="text-xs">Trainer</TableHead>
+                  <TableHead className="text-xs w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -169,6 +172,7 @@ export default function AdminPage() {
           )}
         </CardContent>
       </Card>
+
       <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
