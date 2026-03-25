@@ -344,6 +344,49 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
     }
   });
 
+  // ============= ADMIN =============
+  const ADMIN_EMAIL = "mariusjansen@gmail.com";
+
+  function isAdmin(req: Request): boolean {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) return false;
+    const session = storage.getSession(token);
+    return session?.user?.email === ADMIN_EMAIL;
+  }
+
+  // GET /api/admin/users — all users with their linked clients and trainers
+  app.get("/api/admin/users", (req: Request, res: Response) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: "Geen toegang" });
+
+    const allUsers = storage.getUsers();
+    const allClients = storage.getClients();
+
+    const result = allUsers.map(u => {
+      const linkedClient = u.clientId ? allClients.find(c => c.id === u.clientId) : null;
+      // For client users, find the trainer who owns their linked client
+      let trainerEmail: string | null = null;
+      if (u.role === "client" && linkedClient?.ownerId) {
+        const trainer = allUsers.find(t => t.id === linkedClient.ownerId);
+        trainerEmail = trainer?.email || null;
+      }
+      // For trainers, count their clients
+      const ownedClients = u.role === "trainer" ? allClients.filter(c => c.ownerId === u.id) : [];
+
+      return {
+        id: u.id,
+        email: u.email,
+        displayName: u.displayName,
+        role: u.role,
+        clientName: linkedClient?.name || null,
+        trainerEmail,
+        ownedClientCount: ownedClients.length,
+        ownedClientNames: ownedClients.map(c => c.name),
+      };
+    });
+
+    res.json(result);
+  });
+
   // GET /api/auth/me
   app.get("/api/auth/me", (req: Request, res: Response) => {
     const token = req.headers.authorization?.replace("Bearer ", "");

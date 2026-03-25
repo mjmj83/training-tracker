@@ -1,4 +1,4 @@
-import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator, LogOut, KeyRound } from "lucide-react";
+import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator, LogOut, KeyRound, Shield } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -373,8 +373,23 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* User / Logout */}
-      <div className="mt-auto border-t border-border p-3">
+      {/* Admin link + User / Logout */}
+      <div className="mt-auto border-t border-border p-3 space-y-2">
+        {user?.email === "mariusjansen@gmail.com" && (
+          <Link href="/admin">
+            <button
+              className={`flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-xs transition-colors ${
+                location === "/admin"
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              }`}
+              data-testid="button-admin"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Admin</span>
+            </button>
+          </Link>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground truncate flex-1">
             {user?.email}
