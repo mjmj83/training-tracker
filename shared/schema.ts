@@ -8,6 +8,7 @@ export const clients = sqliteTable("clients", {
   name: text("name").notNull(),
   gender: text("gender").notNull().default("male"), // 'male' | 'female'
   notes: text("notes").default(""),
+  ownerId: integer("owner_id"), // user who owns this client
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
@@ -91,8 +92,9 @@ export type WeightLog = typeof weightLogs.$inferSelect;
 // Exercise name library for search/autocomplete
 export const exerciseLibrary = sqliteTable("exercise_library", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
   active: integer("active").notNull().default(1), // 1 = active, 0 = inactive
+  ownerId: integer("owner_id"), // user who owns this library entry
 });
 
 export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).omit({ id: true });

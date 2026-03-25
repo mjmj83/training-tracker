@@ -108,6 +108,11 @@ try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN active INTEGER NOT NU
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN gender TEXT NOT NULL DEFAULT 'male'"); } catch {}
 try { sqlite.exec("ALTER TABLE months ADD COLUMN start_date TEXT"); } catch {}
 
+// Multi-tenant migrations
+try { sqlite.exec("ALTER TABLE clients ADD COLUMN owner_id INTEGER"); } catch {}
+try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN owner_id INTEGER"); } catch {}
+try { sqlite.exec("DROP INDEX IF EXISTS exercise_library_name_unique"); } catch {}
+
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS abc_measurements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,6 +199,9 @@ export class SqliteStorage {
   // Clients
   getClients(): Client[] {
     return db.select().from(clients).all();
+  }
+  getClientsByOwner(ownerId: number): Client[] {
+    return db.select().from(clients).where(eq(clients.ownerId, ownerId)).all();
   }
   getClient(id: number): Client | undefined {
     return db.select().from(clients).where(eq(clients.id, id)).get();
@@ -286,14 +294,14 @@ export class SqliteStorage {
     for (const d of days) { all.push(...db.select().from(exercises).where(eq(exercises.trainingDayId, d.id)).all()); }
     return all;
   }
-  createExercise(data: InsertExercise): Exercise {
+  createExercise(data: InsertExercise, ownerId?: number): Exercise {
     const ex = db.insert(exercises).values(data).returning().get();
-    this.addToExerciseLibrary(data.name);
+    this.addToExerciseLibrary(data.name, ownerId);
     return ex;
   }
-  updateExercise(id: number, data: Partial<InsertExercise>): Exercise | undefined {
+  updateExercise(id: number, data: Partial<InsertExercise>, ownerId?: number): Exercise | undefined {
     const result = db.update(exercises).set(data).where(eq(exercises.id, id)).returning().get();
-    if (data.name) { this.addToExerciseLibrary(data.name); }
+    if (data.name) { this.addToExerciseLibrary(data.name, ownerId); }
     return result;
   }
   deleteExercise(id: number): void {
@@ -335,26 +343,33 @@ export class SqliteStorage {
   }
 
   // Exercise Library — fuzzy search (active only)
-  searchExerciseLibrary(query: string): ExerciseLibrary[] {
+  searchExerciseLibrary(query: string, ownerId?: number): ExerciseLibrary[] {
+    const ownerFilter = ownerId != null ? ` AND owner_id = ?` : ``;
+    const ownerParams = ownerId != null ? [ownerId] : [];
     if (!query || query.length === 0) {
-      return sqlite.prepare(`SELECT id, name, active FROM exercise_library WHERE active = 1 ORDER BY name`).all() as ExerciseLibrary[];
+      return sqlite.prepare(`SELECT id, name, active, owner_id AS ownerId FROM exercise_library WHERE active = 1${ownerFilter} ORDER BY name`).all(...ownerParams) as ExerciseLibrary[];
     }
     const words = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
     if (words.length === 0) {
-      return sqlite.prepare(`SELECT id, name, active FROM exercise_library WHERE active = 1 ORDER BY name`).all() as ExerciseLibrary[];
+      return sqlite.prepare(`SELECT id, name, active, owner_id AS ownerId FROM exercise_library WHERE active = 1${ownerFilter} ORDER BY name`).all(...ownerParams) as ExerciseLibrary[];
     }
     const conditions = words.map(() => `LOWER(name) LIKE ?`).join(" AND ");
     const params = words.map(w => `%${w}%`);
-    return sqlite.prepare(`SELECT id, name, active FROM exercise_library WHERE active = 1 AND ${conditions} ORDER BY name`).all(...params) as ExerciseLibrary[];
+    return sqlite.prepare(`SELECT id, name, active, owner_id AS ownerId FROM exercise_library WHERE active = 1 AND ${conditions}${ownerFilter} ORDER BY name`).all(...params, ...ownerParams) as ExerciseLibrary[];
   }
   // Get ALL exercises (including inactive) for admin
-  getAllExerciseLibrary(): ExerciseLibrary[] {
+  getAllExerciseLibrary(ownerId?: number): ExerciseLibrary[] {
+    if (ownerId != null) {
+      return db.select().from(exerciseLibrary).where(eq(exerciseLibrary.ownerId, ownerId)).all();
+    }
     return db.select().from(exerciseLibrary).all();
   }
-  addToExerciseLibrary(name: string): ExerciseLibrary | undefined {
-    const existing = db.select().from(exerciseLibrary).where(eq(exerciseLibrary.name, name)).get();
+  addToExerciseLibrary(name: string, ownerId?: number): ExerciseLibrary | undefined {
+    // Check for existing with same name and owner
+    const allMatching = db.select().from(exerciseLibrary).where(eq(exerciseLibrary.name, name)).all();
+    const existing = allMatching.find(e => e.ownerId === (ownerId ?? null));
     if (existing) return existing;
-    try { return db.insert(exerciseLibrary).values({ name, active: 1 }).returning().get(); } catch { return undefined; }
+    try { return db.insert(exerciseLibrary).values({ name, active: 1, ownerId: ownerId ?? null }).returning().get(); } catch { return undefined; }
   }
   toggleExerciseLibraryActive(id: number, active: boolean): void {
     sqlite.prepare("UPDATE exercise_library SET active = ? WHERE id = ?").run(active ? 1 : 0, id);

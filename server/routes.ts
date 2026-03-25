@@ -8,43 +8,72 @@ export function registerRoutes(server: Server, app: Express): void {
   registerAuthRoutes(app, storage);
   app.use(authMiddleware(storage));
 
+  // Helper: verify the current user has access to a given client
+  function verifyClientAccess(req: any, clientId: number): boolean {
+    const user = req.user;
+    if (!user) return false;
+    if (user.role === "client") return user.clientId === clientId;
+    const client = storage.getClient(clientId);
+    return client?.ownerId === user.id || !client?.ownerId; // allow access to unowned clients for backward compat
+  }
+
   // ============= CLIENTS =============
-  app.get("/api/clients", (_req, res) => { res.json(storage.getClients()); });
+  app.get("/api/clients", (req, res) => {
+    const user = (req as any).user;
+    if (user.role === "client" && user.clientId) {
+      const client = storage.getClient(user.clientId);
+      return res.json(client ? [client] : []);
+    }
+    res.json(storage.getClientsByOwner(user.id));
+  });
   app.post("/api/clients", (req, res) => {
+    const user = (req as any).user;
     const { name, gender } = req.body;
     if (!name || typeof name !== "string") return res.status(400).json({ error: "Name is required" });
-    res.json(storage.createClient({ name, gender: gender || "male" }));
+    res.json(storage.createClient({ name, gender: gender || "male", ownerId: user.id }));
   });
   app.get("/api/clients/:id", (req, res) => {
-    const client = storage.getClient(parseInt(req.params.id));
+    const id = parseInt(req.params.id);
+    if (!verifyClientAccess(req, id)) return res.status(403).json({ error: "Access denied" });
+    const client = storage.getClient(id);
     if (!client) return res.status(404).json({ error: "Client not found" });
     res.json(client);
   });
   app.patch("/api/clients/:id", (req, res) => {
-    res.json(storage.updateClient(parseInt(req.params.id), req.body));
+    const id = parseInt(req.params.id);
+    if (!verifyClientAccess(req, id)) return res.status(403).json({ error: "Access denied" });
+    res.json(storage.updateClient(id, req.body));
   });
   app.delete("/api/clients/:id", (req, res) => {
-    storage.deleteClient(parseInt(req.params.id));
+    const id = parseInt(req.params.id);
+    if (!verifyClientAccess(req, id)) return res.status(403).json({ error: "Access denied" });
+    storage.deleteClient(id);
     res.json({ ok: true });
   });
 
   // ============= MONTHS =============
   app.get("/api/clients/:clientId/months", (req, res) => {
-    res.json(storage.getMonthsByClient(parseInt(req.params.clientId)));
+    const clientId = parseInt(req.params.clientId);
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
+    res.json(storage.getMonthsByClient(clientId));
   });
   app.post("/api/months", (req, res) => {
     const { clientId, label, year, month, weekCount, sortOrder, startDate } = req.body;
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
     res.json(storage.createMonth({ clientId, label, year, month, weekCount: weekCount ?? 4, sortOrder: sortOrder ?? 0, startDate: startDate ?? null }));
   });
   app.patch("/api/months/:id", (req, res) => {
+    // TODO: Could tighten by verifying the month's parent client belongs to user
     const updated = storage.updateMonth(parseInt(req.params.id), req.body);
     res.json(updated);
   });
   app.delete("/api/months/:id", (req, res) => {
+    // TODO: Could tighten by verifying the month's parent client belongs to user
     storage.deleteMonth(parseInt(req.params.id));
     res.json({ ok: true });
   });
   app.post("/api/months/:id/copy", (req, res) => {
+    // TODO: Could tighten by verifying the month's parent client belongs to user
     const { label, year, month, weekCount, startDate } = req.body;
     if (!label || !year || !month) return res.status(400).json({ error: "label, year, and month are required" });
     try {
@@ -63,6 +92,7 @@ export function registerRoutes(server: Server, app: Express): void {
   });
 
   // ============= TRAINING DAYS =============
+  // TODO: Could tighten by verifying nested resources belong to an accessible client
   app.get("/api/months/:monthId/training-days", (req, res) => {
     res.json(storage.getTrainingDaysByMonth(parseInt(req.params.monthId)));
   });
@@ -79,18 +109,21 @@ export function registerRoutes(server: Server, app: Express): void {
   });
 
   // ============= EXERCISES =============
+  // TODO: Could tighten by verifying nested resources belong to an accessible client
   app.get("/api/training-days/:dayId/exercises", (req, res) => {
     res.json(storage.getExercisesByTrainingDay(parseInt(req.params.dayId)));
   });
   app.post("/api/exercises", (req, res) => {
+    const user = (req as any).user;
     const { trainingDayId, name, sets, goalReps, tempo, rest, notes, supersetGroupId, sortOrder } = req.body;
     res.json(storage.createExercise({
       trainingDayId, name, sets: sets ?? 3, goalReps: goalReps ?? 10,
       tempo: tempo ?? "", rest: rest ?? 60, notes: notes ?? "", supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
-    }));
+    }, user.id));
   });
   app.patch("/api/exercises/:id", (req, res) => {
-    res.json(storage.updateExercise(parseInt(req.params.id), req.body));
+    const user = (req as any).user;
+    res.json(storage.updateExercise(parseInt(req.params.id), req.body, user.id));
   });
   app.delete("/api/exercises/:id", (req, res) => {
     storage.deleteExercise(parseInt(req.params.id));
@@ -116,6 +149,7 @@ export function registerRoutes(server: Server, app: Express): void {
   });
 
   // ============= WEEK DATES =============
+  // TODO: Could tighten by verifying nested resources belong to an accessible client
   app.get("/api/months/:monthId/week-dates", (req, res) => {
     res.json(storage.getWeekDatesByMonth(parseInt(req.params.monthId)));
   });
@@ -125,6 +159,7 @@ export function registerRoutes(server: Server, app: Express): void {
   });
 
   // ============= WEIGHT LOGS =============
+  // TODO: Could tighten by verifying nested resources belong to an accessible client
   app.get("/api/exercises/:exerciseId/weight-logs", (req, res) => {
     res.json(storage.getWeightLogsByExercise(parseInt(req.params.exerciseId)));
   });
@@ -138,15 +173,18 @@ export function registerRoutes(server: Server, app: Express): void {
 
   // ============= EXERCISE LIBRARY =============
   app.get("/api/exercise-library", (req, res) => {
-    res.json(storage.searchExerciseLibrary((req.query.q as string) || ""));
+    const user = (req as any).user;
+    res.json(storage.searchExerciseLibrary((req.query.q as string) || "", user.id));
   });
-  app.get("/api/exercise-library/all", (_req, res) => {
-    res.json(storage.getAllExerciseLibrary());
+  app.get("/api/exercise-library/all", (req, res) => {
+    const user = (req as any).user;
+    res.json(storage.getAllExerciseLibrary(user.id));
   });
   app.post("/api/exercise-library", (req, res) => {
+    const user = (req as any).user;
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: "Name required" });
-    const ex = storage.addToExerciseLibrary(name);
+    const ex = storage.addToExerciseLibrary(name, user.id);
     res.json(ex);
   });
   app.patch("/api/exercise-library/:id", (req, res) => {
@@ -166,18 +204,23 @@ export function registerRoutes(server: Server, app: Express): void {
 
   // ============= ABC MEASUREMENTS =============
   app.get("/api/clients/:clientId/abc", (req, res) => {
-    res.json(storage.getAbcMeasurements(parseInt(req.params.clientId)));
+    const clientId = parseInt(req.params.clientId);
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
+    res.json(storage.getAbcMeasurements(clientId));
   });
   app.post("/api/abc", (req, res) => {
     const { clientId, date, gender, weightKg, heightCm, neckCm, abdomenCm, hipCm, bodyFatPct } = req.body;
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
     res.json(storage.createAbcMeasurement({ clientId, date, gender, weightKg, heightCm, neckCm, abdomenCm, hipCm, bodyFatPct }));
   });
   app.delete("/api/abc/:id", (req, res) => {
+    // TODO: Could tighten by verifying the measurement's parent client belongs to user
     storage.deleteAbcMeasurement(parseInt(req.params.id));
     res.json({ ok: true });
   });
 
   // ============= FULL MONTH DATA =============
+  // TODO: Could tighten by verifying the month's parent client belongs to user
   app.get("/api/months/:monthId/full", (req, res) => {
     const monthId = parseInt(req.params.monthId);
     const data = storage.getFullMonthData(monthId);
@@ -187,12 +230,14 @@ export function registerRoutes(server: Server, app: Express): void {
   // All blocks for a client (for cross-block charts)
   app.get("/api/clients/:clientId/all-blocks", (req, res) => {
     const clientId = parseInt(req.params.clientId);
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
     const allMonths = storage.getMonthsByClient(clientId);
     const blocks = allMonths.map(m => storage.getFullMonthData(m.id));
     res.json(blocks);
   });
 
   // ============= SNAPSHOTS / SAVE STATE =============
+  // TODO: Could tighten by verifying the month's parent client belongs to user
   app.get("/api/months/:monthId/snapshots", (req, res) => {
     res.json(storage.getSnapshotsByMonth(parseInt(req.params.monthId)));
   });
