@@ -113,6 +113,15 @@ try { sqlite.exec("ALTER TABLE clients ADD COLUMN owner_id INTEGER"); } catch {}
 try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN owner_id INTEGER"); } catch {}
 try { sqlite.exec("DROP INDEX IF EXISTS exercise_library_name_unique"); } catch {}
 
+// Assign unowned clients and exercise library entries to the first trainer
+{
+  const firstTrainer = sqlite.prepare("SELECT id FROM users WHERE role = 'trainer' LIMIT 1").get() as any;
+  if (firstTrainer) {
+    sqlite.exec(`UPDATE clients SET owner_id = ${firstTrainer.id} WHERE owner_id IS NULL`);
+    sqlite.exec(`UPDATE exercise_library SET owner_id = ${firstTrainer.id} WHERE owner_id IS NULL`);
+  }
+}
+
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS abc_measurements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

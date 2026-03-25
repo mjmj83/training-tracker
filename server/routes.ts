@@ -14,7 +14,7 @@ export function registerRoutes(server: Server, app: Express): void {
     if (!user) return false;
     if (user.role === "client") return user.clientId === clientId;
     const client = storage.getClient(clientId);
-    return client?.ownerId === user.id || !client?.ownerId; // allow access to unowned clients for backward compat
+    return client?.ownerId === user.id;
   }
 
   // ============= CLIENTS =============
