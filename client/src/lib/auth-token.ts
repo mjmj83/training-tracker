@@ -1,11 +1,35 @@
-// Module-level auth token — shared between auth context and queryClient.
-// MUST be in-memory only (no localStorage/cookies — blocked in sandboxed iframe).
-let authToken: string | null = null;
+// Auth token storage — tries localStorage first, falls back to in-memory.
+// localStorage works on Railway/custom domains but is blocked in sandboxed iframes.
+
+const STORAGE_KEY = "tt_session";
+let memoryToken: string | null = null;
+
+function canUseLocalStorage(): boolean {
+  try {
+    localStorage.setItem("__test__", "1");
+    localStorage.removeItem("__test__");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const useLS = canUseLocalStorage();
 
 export function getAuthToken(): string | null {
-  return authToken;
+  if (useLS) {
+    return localStorage.getItem(STORAGE_KEY);
+  }
+  return memoryToken;
 }
 
 export function setAuthToken(token: string | null): void {
-  authToken = token;
+  memoryToken = token;
+  if (useLS) {
+    if (token) {
+      localStorage.setItem(STORAGE_KEY, token);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
 }
