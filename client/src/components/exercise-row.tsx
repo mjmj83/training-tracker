@@ -38,10 +38,10 @@ export default function ExerciseRow({
   readOnly = false,
 }: Props) {
   const [name, setName] = useState(exercise.name);
-  const [sets, setSets] = useState(exercise.sets);
+  const [sets, setSets] = useState(String(exercise.sets));
   const [goalReps, setGoalReps] = useState(String(exercise.goalReps));
   const [tempo, setTempo] = useState(exercise.tempo ?? "");
-  const [rest, setRest] = useState(exercise.rest ?? 60);
+  const [rest, setRest] = useState(String(exercise.rest ?? 60));
   const [rir, setRir] = useState(exercise.rir ?? "");
   const [notes, setNotes] = useState(exercise.notes ?? "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -123,19 +123,17 @@ export default function ExerciseRow({
           type="text"
           inputMode={type === "number" ? "numeric" : "text"}
           value={value}
-          onChange={(e) => {
-            if (type === "number") {
-              const num = parseInt(e.target.value);
-              onChange(isNaN(num) ? "" : num);
-            } else {
-              onChange(e.target.value);
-            }
-          }}
+          onChange={(e) => onChange(e.target.value)}
           onBlur={(e) => {
-            if (type === "number" && e.target.value === "") {
-              // Only reset to min for sets and rest fields, leave others empty
-              if (field === "sets" || field === "rest") {
-                onChange(min ?? 1);
+            if (type === "number") {
+              const trimmed = e.target.value.trim();
+              if (trimmed === "") {
+                if (field === "sets" || field === "rest") {
+                  onChange(String(min ?? 1));
+                }
+              } else {
+                const num = parseInt(trimmed);
+                if (!isNaN(num)) onChange(String(num));
               }
             }
             onFieldBlur();
@@ -263,7 +261,7 @@ export default function ExerciseRow({
           onMouseLeave={() => onWeekHover(null)}
         >
           <div className="flex flex-col gap-0.5">
-            {Array.from({ length: sets }, (_, i) => i + 1).map((setNum) => {
+            {Array.from({ length: parseInt(String(sets)) || 3 }, (_, i) => i + 1).map((setNum) => {
               const log = getLog(weekNum, setNum);
               const prevLog = setNum > 1 ? getLog(weekNum, setNum - 1) : null;
               return (

@@ -57,14 +57,19 @@ export default function WeightCell({
 
   const hasNotes = notes && notes.trim().length > 0;
 
-  const handleWeightFocus = () => {
+  const handleWeightFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     if (!readOnly && weight === "" && previousWeight != null) {
-      setWeight(String(previousWeight));
+      const val = String(previousWeight);
+      setWeight(val);
+      // Select text after React renders the new value
+      requestAnimationFrame(() => e.target.select());
     }
   };
-  const handleRepsFocus = () => {
+  const handleRepsFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     if (!readOnly && reps === "" && previousReps != null) {
-      setReps(String(previousReps));
+      const val = String(previousReps);
+      setReps(val);
+      requestAnimationFrame(() => e.target.select());
     }
   };
 
