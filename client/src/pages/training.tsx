@@ -11,7 +11,7 @@ import MonthSwitcher from "@/components/month-switcher";
 import { useUndoRedo } from "@/lib/undo-redo";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month, Client, AbcMeasurement } from "@shared/schema";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useQuery as useQueryAuto } from "@tanstack/react-query";
 import { Link } from "wouter";
 
@@ -83,19 +83,35 @@ export default function TrainingPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Auto-select last month when client is selected
+  // Auto-select latest month (by startDate) on mount and when client changes
+  const autoSelectDoneRef = useRef(false);
+  const prevClientRef = useRef(clientId);
   const { data: autoMonths = [] } = useQueryAuto<any[]>({
     queryKey: ["/api/clients", clientId, "months"],
     queryFn: () => apiRequest("GET", `/api/clients/${clientId}/months`).then(r => r.json()),
-    enabled: !!clientId && !monthId,
+    enabled: !!clientId,
   });
 
+  // Reset auto-select when client changes
+  if (prevClientRef.current !== clientId) {
+    prevClientRef.current = clientId;
+    autoSelectDoneRef.current = false;
+  }
+
   useEffect(() => {
-    if (clientId && !monthId && autoMonths.length > 0) {
-      const last = autoMonths[autoMonths.length - 1];
-      setMonthId(last.id);
+    if (clientId && autoMonths.length > 0 && !autoSelectDoneRef.current) {
+      const sorted = [...autoMonths].sort((a: any, b: any) => {
+        const da = a.startDate || "";
+        const db = b.startDate || "";
+        return db.localeCompare(da);
+      });
+      const latest = sorted[0];
+      if (latest) {
+        setMonthId(latest.id);
+      }
+      autoSelectDoneRef.current = true;
     }
-  }, [clientId, monthId, autoMonths]);
+  }, [clientId, autoMonths]);
 
   if (!clientId) {
     return (
