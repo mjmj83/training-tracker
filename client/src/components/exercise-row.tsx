@@ -100,51 +100,42 @@ export default function ExerciseRow({
 
   const dragOverClass = isDragOver ? "ring-2 ring-primary ring-inset" : "";
 
-  // Settings badge component
-  const SettingsBadge = ({ label, value, onChange, onFieldBlur, field, type, inputWidth = "w-6", min, max, step, placeholder }: {
-    label: string;
-    value: string | number;
-    onChange: (v: any) => void;
-    onFieldBlur: () => void;
-    field: string;
-    type?: string;
-    inputWidth?: string;
-    min?: number;
-    max?: number;
-    step?: number;
-    placeholder?: string;
-  }) => (
-    <div className="flex items-center gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      {readOnly ? (
-        <span className="text-[13px] font-medium">{value || "—"}</span>
-      ) : (
-        <input
-          type="text"
-          inputMode={type === "number" ? "numeric" : "text"}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={(e) => {
-            if (type === "number") {
-              const trimmed = e.target.value.trim();
-              if (trimmed === "") {
-                if (field === "sets" || field === "rest") {
-                  onChange(String(min ?? 1));
+  // Inline helper to render a settings badge (not a component to avoid focus loss on re-render)
+  const renderBadge = (label: string, value: string | number, onChange: (v: string) => void, onFieldBlur: () => void, field: string, opts?: { type?: string; inputWidth?: string; min?: number; placeholder?: string }) => {
+    const { type, inputWidth = "w-6", min, placeholder } = opts || {};
+    return (
+      <div className="flex items-center gap-0.5" key={field}>
+        <span className="text-xs text-muted-foreground">{label}</span>
+        {readOnly ? (
+          <span className="text-[13px] font-medium">{value || "—"}</span>
+        ) : (
+          <input
+            type="text"
+            inputMode={type === "number" ? "numeric" : "text"}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={(e) => {
+              if (type === "number") {
+                const trimmed = e.target.value.trim();
+                if (trimmed === "") {
+                  if (field === "sets" || field === "rest") {
+                    onChange(String(min ?? 1));
+                  }
+                } else {
+                  const num = parseInt(trimmed);
+                  if (!isNaN(num)) onChange(String(num));
                 }
-              } else {
-                const num = parseInt(trimmed);
-                if (!isNaN(num)) onChange(String(num));
               }
-            }
-            onFieldBlur();
-          }}
-          placeholder={placeholder}
-          className={`${inputWidth} text-[13px] text-center bg-muted/50 border border-border rounded px-1 py-0 h-[22px] outline-none focus:ring-1 focus:ring-primary`}
-          data-testid={`input-${field}-${exercise.id}`}
-        />
-      )}
-    </div>
-  );
+              onFieldBlur();
+            }}
+            placeholder={placeholder}
+            className={`${inputWidth} text-[13px] text-center bg-muted/50 border border-border rounded px-1 py-0 h-[22px] outline-none focus:ring-1 focus:ring-primary`}
+            data-testid={`input-${field}-${exercise.id}`}
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <tr
@@ -191,31 +182,11 @@ export default function ExerciseRow({
 
         {/* Line 2: Settings badges */}
         <div className="flex gap-2 items-center mt-0.5">
-          <SettingsBadge
-            label="sets" value={sets}
-            onChange={setSets} onFieldBlur={() => handleBlur("sets", sets)}
-            field="sets" type="number" inputWidth="w-6" min={1} max={5}
-          />
-          <SettingsBadge
-            label="reps" value={goalReps}
-            onChange={setGoalReps} onFieldBlur={() => handleBlur("goalReps", goalReps)}
-            field="reps" inputWidth="w-10" placeholder="10"
-          />
-          <SettingsBadge
-            label="tempo" value={tempo}
-            onChange={setTempo} onFieldBlur={() => handleBlur("tempo", tempo)}
-            field="tempo" inputWidth="w-8" placeholder="—"
-          />
-          <SettingsBadge
-            label="rest" value={rest}
-            onChange={setRest} onFieldBlur={() => handleBlur("rest", rest)}
-            field="rest" type="number" inputWidth="w-8" min={5} max={90} step={5}
-          />
-          <SettingsBadge
-            label="rir" value={rir}
-            onChange={setRir} onFieldBlur={() => handleBlur("rir", rir)}
-            field="rir" inputWidth="w-6" placeholder="—"
-          />
+          {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { type: "number", inputWidth: "w-6", min: 1 })}
+          {renderBadge("reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-10", placeholder: "10" })}
+          {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-8", placeholder: "—" })}
+          {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { type: "number", inputWidth: "w-8", min: 5 })}
+          {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-6", placeholder: "—" })}
         </div>
 
         {/* Line 3: Notes — always shown */}
