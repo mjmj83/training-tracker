@@ -79,7 +79,7 @@ export default function WeightCell({
   return (
     <>
       <div
-        className="group/cell flex items-center gap-0.5 rounded bg-muted/40 px-1 py-0.5 relative"
+        className="group/cell flex items-center gap-0.5 rounded bg-muted/60 px-1 py-0.5 relative"
         data-testid={`weight-cell-${exerciseId}-w${weekNumber}-s${setNumber}`}
       >
         {!isRepsOnly && (

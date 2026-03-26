@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, GripVertical, Unlink, MessageCircleWarning, BarChart3, Settings } from "lucide-react";
+import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -144,7 +144,7 @@ export default function ExerciseRow({
 
   return (
     <tr
-      className={`border-b border-border/50 hover:bg-muted/30 transition-colors group ${supersetClass} ${dragOverClass}`}
+      className={`border-b border-border hover:bg-muted/50 transition-colors group bg-card/60 ${supersetClass} ${dragOverClass}`}
       draggable={!readOnly}
       onDragStart={(e) => {
         if (readOnly) { e.preventDefault(); return; }
@@ -157,21 +157,15 @@ export default function ExerciseRow({
       data-testid={`exercise-row-${exercise.id}`}
     >
       {/* Exercise info block — single td with stacked lines */}
-      <td className="py-1 px-2">
-        {/* Line 1: Exercise name + actions */}
+      <td className="py-1.5 px-2">
+        {/* Line 1: Exercise name + chart icon */}
         <div className="flex items-center gap-1">
-          {!readOnly && (
-            <GripVertical className="w-3 h-3 text-muted-foreground/40 cursor-grab shrink-0" />
-          )}
-          {isSuperset && (
-            <span className="text-[11px] text-primary font-bold shrink-0 mr-0.5">SS</span>
-          )}
           <div className="flex-1 min-w-0 flex items-center gap-1">
             <input
               value={name}
               onChange={(e) => { if (!readOnly) setName(e.target.value); }}
               onBlur={() => handleBlur("name", name)}
-              className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm font-medium"
+              className={`flex-1 min-w-0 bg-transparent border-none outline-none text-[15px] font-semibold ${!readOnly ? "cursor-grab active:cursor-grabbing" : ""}`}
               readOnly={readOnly}
               data-testid={`input-exercise-name-${exercise.id}`}
             />
