@@ -152,7 +152,7 @@ export default function ExerciseRow({
 
   return (
     <tr
-      className={`border border-border hover:bg-muted/50 transition-colors group bg-card/60 rounded-lg ${supersetClass} ${dragOverClass}`}
+      className={`hover:bg-muted/50 transition-colors group bg-card/60 ${supersetClass} ${dragOverClass}`}
       draggable={!readOnly}
       onDragStart={(e) => {
         if (readOnly) { e.preventDefault(); return; }
@@ -165,8 +165,8 @@ export default function ExerciseRow({
       data-testid={`exercise-row-${exercise.id}`}
     >
       {/* Exercise info block — single td with stacked lines */}
-      <td className="py-1.5 px-2">
-        {/* Line 1: Exercise name + chart icon */}
+      <td className="py-1.5 px-2 border border-border border-r-0 rounded-l-[5px]">
+        {/* Line 1: Exercise name */}
         <div className="flex items-center gap-1">
           <div className="flex-1 min-w-0 flex items-center gap-1">
             <input
@@ -177,18 +177,11 @@ export default function ExerciseRow({
               readOnly={readOnly}
               data-testid={`input-exercise-name-${exercise.id}`}
             />
-            <button
-              onClick={() => setShowChart(true)}
-              className="text-muted-foreground/40 hover:text-primary shrink-0"
-              data-testid={`button-chart-${exercise.id}`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
 
         {/* Line 2: Settings badges */}
-        <div className="flex gap-2 items-center mt-1.5">
+        <div className="flex gap-2 items-center mt-2">
           {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { type: "number", inputWidth: "w-6", min: 1 })}
           {renderBadge("reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-10", placeholder: "10" })}
           {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-8", placeholder: "—" })}
@@ -198,7 +191,7 @@ export default function ExerciseRow({
 
         {/* Line 3: Notes — always shown */}
         {!readOnly ? (
-          <div className="flex items-center gap-1 mt-1.5">
+          <div className="flex items-center gap-1 mt-2">
             <button
               onClick={() => { setEditingNotes(notes); setShowNotesDialog(true); }}
               className={`shrink-0 ${hasNotes ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
@@ -218,7 +211,7 @@ export default function ExerciseRow({
             )}
           </div>
         ) : hasNotes ? (
-          <div className="flex items-center gap-1 mt-1.5">
+          <div className="flex items-center gap-1 mt-2">
             <MessageCircleWarning className="w-3.5 h-3.5 text-primary shrink-0" />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -231,10 +224,13 @@ export default function ExerciseRow({
       </td>
 
       {/* Weight columns */}
-      {weeks.map((weekNum) => (
+      {weeks.map((weekNum, idx) => {
+        const isLastWeek = idx === weeks.length - 1;
+        const needsRightBorder = isLastWeek && readOnly;
+        return (
         <td
           key={weekNum}
-          className={`py-1 px-1 w-[110px] max-w-[110px] transition-colors ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
+          className={`py-1 px-1 w-[110px] max-w-[110px] transition-colors border-y border-border ${needsRightBorder ? "border-r border-border rounded-r-[5px]" : ""} ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
           onMouseEnter={() => onWeekHover(weekNum)}
           onMouseLeave={() => onWeekHover(null)}
         >
@@ -262,11 +258,12 @@ export default function ExerciseRow({
             })}
           </div>
         </td>
-      ))}
+        );
+      })}
 
       {/* Menu column — far right */}
       {!readOnly && (
-        <td className="py-1 px-1 w-8 align-top">
+        <td className="py-1 px-1 w-8 align-top border border-border border-l-0 rounded-r-[5px]">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="text-muted-foreground/40 hover:text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-1" data-testid={`button-menu-${exercise.id}`}>
@@ -332,11 +329,20 @@ export default function ExerciseRow({
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Chart icon — under menu icon, hover visible */}
+          <button
+            onClick={() => setShowChart(true)}
+            className="text-muted-foreground/40 hover:text-primary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-1 flex items-center justify-center w-full"
+            data-testid={`button-chart-${exercise.id}`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+          </button>
         </td>
       )}
 
       {/* Hidden td for dialogs and chart */}
-      <td className="py-1 px-1 w-0">
+      <td className="p-0 w-0 border-0">
         {!readOnly && (
           <ConfirmDialog
             open={showDeleteConfirm}
