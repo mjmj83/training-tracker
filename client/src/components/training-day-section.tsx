@@ -189,7 +189,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
       {/* Exercise Table */}
       {isOpen && (
         <div>
-          <table className="text-sm border-separate border-spacing-y-1.5" style={{ borderSpacing: '0 6px' }} data-testid={`table-exercises-${day.id}`}>
+          <table className="text-sm border-separate" style={{ borderSpacing: '0 0' }} data-testid={`table-exercises-${day.id}`}>
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-1.5 px-2 font-medium text-muted-foreground whitespace-nowrap">Oefening</th>
@@ -222,9 +222,15 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                 return group.exercises.map((ex, ei) => {
                   // Determine global index in sortedExercises for move up/down
                   const globalIdx = sortedExercises.findIndex(e => e.id === ex.id);
+                  // Spacer: 4px within superset, 12px between groups/exercises
+                  const isFirstOverall = gi === 0 && ei === 0;
+                  const spacerHeight = (isSuperset && ei > 0) ? 'h-1' : 'h-3';
 
                   return (
                     <Fragment key={ex.id}>
+                      {!isFirstOverall && (
+                        <tr><td colSpan={999} className={`${spacerHeight} p-0 border-0`}></td></tr>
+                      )}
                       <ExerciseRow
                         exercise={ex}
                         weightLogs={ex.weightLogs}
