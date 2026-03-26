@@ -5,7 +5,6 @@ import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -307,28 +306,7 @@ export default function ExerciseRow({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Settings popover (triggered from menu) */}
-          <Popover open={showSettings} onOpenChange={setShowSettings}>
-            <PopoverTrigger asChild><span /></PopoverTrigger>
-            <PopoverContent side="left" align="start" className="w-auto p-3">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id={`weight-toggle-${exercise.id}`}
-                  checked={weightType === "weighted"}
-                  onCheckedChange={(checked) => {
-                    const newType = checked ? "weighted" : "reps_only";
-                    setWeightType(newType);
-                    onBeforeChange();
-                    updateExercise.mutate({ weightType: newType });
-                  }}
-                  data-testid={`toggle-weight-type-${exercise.id}`}
-                />
-                <Label htmlFor={`weight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
-                  Gewicht
-                </Label>
-              </div>
-            </PopoverContent>
-          </Popover>
+
 
           {/* Chart icon — under menu icon, hover visible */}
           <button
@@ -355,6 +333,32 @@ export default function ExerciseRow({
               setShowDeleteConfirm(false);
             }}
           />
+        )}
+        {/* Settings Dialog */}
+        {!readOnly && (
+          <Dialog open={showSettings} onOpenChange={setShowSettings}>
+            <DialogContent className="sm:max-w-[300px]">
+              <DialogHeader>
+                <DialogTitle className="text-sm">Instellingen — {exercise.name}</DialogTitle>
+              </DialogHeader>
+              <div className="flex items-center gap-2 py-2">
+                <Switch
+                  id={`weight-toggle-${exercise.id}`}
+                  checked={weightType === "weighted"}
+                  onCheckedChange={(checked) => {
+                    const newType = checked ? "weighted" : "reps_only";
+                    setWeightType(newType);
+                    onBeforeChange();
+                    updateExercise.mutate({ weightType: newType });
+                  }}
+                  data-testid={`toggle-weight-type-${exercise.id}`}
+                />
+                <Label htmlFor={`weight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
+                  Gewicht
+                </Label>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
         {/* Notes Dialog — trainers only */}
         {!readOnly && (
