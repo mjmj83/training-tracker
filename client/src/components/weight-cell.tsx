@@ -17,12 +17,16 @@ interface Props {
   monthId: number;
   onBeforeChange?: () => void;
   readOnly?: boolean;
+  previousWeight?: number | null;
+  previousReps?: number | null;
 }
 
 export default function WeightCell({
   exerciseId, weekNumber, setNumber,
   initialWeight, initialReps, initialNotes, monthId, onBeforeChange,
   readOnly = false,
+  previousWeight,
+  previousReps,
 }: Props) {
   const [weight, setWeight] = useState(initialWeight !== null ? String(initialWeight) : "");
   const [reps, setReps] = useState(initialReps !== null ? String(initialReps) : "");
@@ -53,6 +57,17 @@ export default function WeightCell({
 
   const hasNotes = notes && notes.trim().length > 0;
 
+  const handleWeightFocus = () => {
+    if (!readOnly && weight === "" && previousWeight != null) {
+      setWeight(String(previousWeight));
+    }
+  };
+  const handleRepsFocus = () => {
+    if (!readOnly && reps === "" && previousReps != null) {
+      setReps(String(previousReps));
+    }
+  };
+
   return (
     <>
       <div
@@ -63,7 +78,8 @@ export default function WeightCell({
           value={weight}
           onChange={(e) => { if (!readOnly) setWeight(e.target.value); }}
           onBlur={handleBlur}
-          placeholder="kg"
+          onFocus={handleWeightFocus}
+          placeholder={previousWeight != null ? String(previousWeight) : "kg"}
           className="w-[36px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
           readOnly={readOnly}
           data-testid={`input-weight-${exerciseId}-w${weekNumber}-s${setNumber}`}
@@ -73,7 +89,8 @@ export default function WeightCell({
           value={reps}
           onChange={(e) => { if (!readOnly) setReps(e.target.value); }}
           onBlur={handleBlur}
-          placeholder="r"
+          onFocus={handleRepsFocus}
+          placeholder={previousReps != null ? String(previousReps) : "r"}
           className="w-[24px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
           readOnly={readOnly}
           data-testid={`input-reps-${exerciseId}-w${weekNumber}-s${setNumber}`}

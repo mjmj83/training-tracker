@@ -180,6 +180,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                     </div>
                   </th>
                 ))}
+                {!readOnly && <th className="w-8"></th>}
                 <th className="w-[30px]"></th>
               </tr>
             </thead>
