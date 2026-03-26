@@ -228,7 +228,7 @@ export default function ExerciseRow({
         </div>
 
         {/* Line 2: Settings badges */}
-        <div className="flex gap-2 items-center mt-0.5">
+        <div className="flex gap-2 items-center mt-1.5">
           {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { type: "number", inputWidth: "w-6", min: 1 })}
           {renderBadge("reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-10", placeholder: "10" })}
           {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-8", placeholder: "—" })}
