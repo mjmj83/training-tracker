@@ -1,11 +1,12 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings } from "lucide-react";
+import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +32,11 @@ interface Props {
   hoveredWeek: number | null;
   onWeekHover: (week: number | null) => void;
   readOnly?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onSwapSupersetOrder?: () => void;
 }
 
 export default function ExerciseRow({
@@ -39,6 +45,8 @@ export default function ExerciseRow({
   isDragOver, onDragStart, onDragOver, onDragLeave, onDrop, onBeforeChange,
   hoveredWeek, onWeekHover,
   readOnly = false,
+  onMoveUp, onMoveDown, canMoveUp = false, canMoveDown = false,
+  onSwapSupersetOrder,
 }: Props) {
   const [name, setName] = useState(exercise.name);
   const [sets, setSets] = useState(String(exercise.sets));
@@ -176,6 +184,46 @@ export default function ExerciseRow({
             >
               <BarChart3 className="w-3.5 h-3.5" />
             </button>
+            {!readOnly && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="text-muted-foreground/40 hover:text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${exercise.id}`}>
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {isSuperset && (
+                    <DropdownMenuItem onClick={() => { onBeforeChange(); unSuperset.mutate(); }}>
+                      <Unlink className="w-4 h-4 mr-2" />
+                      Superset opheffen
+                    </DropdownMenuItem>
+                  )}
+                  {isSuperset && onSwapSupersetOrder && (
+                    <DropdownMenuItem onClick={onSwapSupersetOrder}>
+                      <ArrowUpDown className="w-4 h-4 mr-2" />
+                      Volgorde wisselen in superset
+                    </DropdownMenuItem>
+                  )}
+                  {canMoveUp && onMoveUp && (
+                    <DropdownMenuItem onClick={onMoveUp}>
+                      <ArrowUp className="w-4 h-4 mr-2" />
+                      Omhoog verplaatsen
+                    </DropdownMenuItem>
+                  )}
+                  {canMoveDown && onMoveDown && (
+                    <DropdownMenuItem onClick={onMoveDown}>
+                      <ArrowDown className="w-4 h-4 mr-2" />
+                      Omlaag verplaatsen
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Verwijderen
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
@@ -283,26 +331,6 @@ export default function ExerciseRow({
           </div>
         </td>
       ))}
-
-      {/* Actions column — far right */}
-      {!readOnly && (
-        <td className="py-1 px-1 w-8">
-          <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100">
-            {isSuperset && (
-              <Button size="icon" variant="ghost" className="h-5 w-5 text-muted-foreground hover:text-primary"
-                onClick={() => { onBeforeChange(); unSuperset.mutate(); }}
-                title="Superset opheffen" data-testid={`button-unsuperset-${exercise.id}`}>
-                <Unlink className="w-3 h-3" />
-              </Button>
-            )}
-            <Button size="icon" variant="ghost" className="h-5 w-5 text-muted-foreground hover:text-destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-              data-testid={`button-delete-exercise-${exercise.id}`}>
-              <Trash2 className="w-3 h-3" />
-            </Button>
-          </div>
-        </td>
-      )}
 
       {/* Hidden td for dialogs and chart */}
       <td className="py-1 px-1 w-0">

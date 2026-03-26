@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, Fragment } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Trash2, ChevronDown, ChevronRight } from "lucide-react";
@@ -54,6 +54,38 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
   });
 
   const sortedExercises = [...exercises].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const moveExercise = useCallback(async (exerciseId: number, direction: 'up' | 'down') => {
+    const idx = sortedExercises.findIndex(e => e.id === exerciseId);
+    if (idx < 0) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sortedExercises.length) return;
+
+    const current = sortedExercises[idx];
+    const swap = sortedExercises[swapIdx];
+
+    onBeforeChange();
+    await apiRequest("PATCH", `/api/exercises/${current.id}`, { sortOrder: swap.sortOrder });
+    await apiRequest("PATCH", `/api/exercises/${swap.id}`, { sortOrder: current.sortOrder });
+    queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+  }, [sortedExercises, monthId, onBeforeChange]);
+
+  const swapSupersetOrder = useCallback(async (exerciseId: number) => {
+    const ex = sortedExercises.find(e => e.id === exerciseId);
+    if (!ex || !ex.supersetGroupId) return;
+    // Find superset neighbors
+    const supersetMembers = sortedExercises.filter(e => e.supersetGroupId === ex.supersetGroupId);
+    if (supersetMembers.length < 2) return;
+    const idx = supersetMembers.findIndex(e => e.id === exerciseId);
+    const swapIdx = idx === 0 ? 1 : idx - 1;
+    const current = supersetMembers[idx];
+    const swap = supersetMembers[swapIdx];
+
+    onBeforeChange();
+    await apiRequest("PATCH", `/api/exercises/${current.id}`, { sortOrder: swap.sortOrder });
+    await apiRequest("PATCH", `/api/exercises/${swap.id}`, { sortOrder: current.sortOrder });
+    queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+  }, [sortedExercises, monthId, onBeforeChange]);
 
   // Group exercises by superset
   const groups: { groupId: number | null; exercises: typeof sortedExercises }[] = [];
@@ -180,34 +212,48 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                     </div>
                   </th>
                 ))}
-                {!readOnly && <th className="w-8"></th>}
                 <th className="w-[30px]"></th>
               </tr>
             </thead>
             <tbody>
               {groups.map((group, gi) => {
                 const isSuperset = group.groupId !== null && group.exercises.length > 1;
-                return group.exercises.map((ex, ei) => (
-                  <ExerciseRow
-                    key={ex.id}
-                    exercise={ex}
-                    weightLogs={ex.weightLogs}
-                    monthId={monthId}
-                    weekCount={weekCount}
-                    isSuperset={isSuperset}
-                    isFirstInSuperset={isSuperset && ei === 0}
-                    isLastInSuperset={isSuperset && ei === group.exercises.length - 1}
-                    isDragOver={dragOverId === ex.id}
-                    onDragStart={() => handleDragStart(ex.id)}
-                    onDragOver={(e) => handleDragOver(e, ex.id)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={() => handleDrop(ex.id)}
-                    onBeforeChange={onBeforeChange}
-                    hoveredWeek={hoveredWeek}
-                    onWeekHover={setHoveredWeek}
-                    readOnly={readOnly}
-                  />
-                ));
+                return group.exercises.map((ex, ei) => {
+                  // Determine global index in sortedExercises for move up/down
+                  const globalIdx = sortedExercises.findIndex(e => e.id === ex.id);
+                  // Add spacer row for visual gap, but skip if inside a superset (not first)
+                  const needsSpacer = !(isSuperset && ei > 0);
+                  return (
+                    <Fragment key={ex.id}>
+                      {needsSpacer && (gi > 0 || ei > 0) && (
+                        <tr><td colSpan={999} className="h-1.5"></td></tr>
+                      )}
+                      <ExerciseRow
+                        exercise={ex}
+                        weightLogs={ex.weightLogs}
+                        monthId={monthId}
+                        weekCount={weekCount}
+                        isSuperset={isSuperset}
+                        isFirstInSuperset={isSuperset && ei === 0}
+                        isLastInSuperset={isSuperset && ei === group.exercises.length - 1}
+                        isDragOver={dragOverId === ex.id}
+                        onDragStart={() => handleDragStart(ex.id)}
+                        onDragOver={(e) => handleDragOver(e, ex.id)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={() => handleDrop(ex.id)}
+                        onBeforeChange={onBeforeChange}
+                        hoveredWeek={hoveredWeek}
+                        onWeekHover={setHoveredWeek}
+                        readOnly={readOnly}
+                        onMoveUp={() => moveExercise(ex.id, 'up')}
+                        onMoveDown={() => moveExercise(ex.id, 'down')}
+                        canMoveUp={globalIdx > 0}
+                        canMoveDown={globalIdx < sortedExercises.length - 1}
+                        onSwapSupersetOrder={isSuperset ? () => swapSupersetOrder(ex.id) : undefined}
+                      />
+                    </Fragment>
+                  );
+                });
               })}
             </tbody>
           </table>
