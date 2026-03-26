@@ -156,14 +156,14 @@ export default function TrainingPage() {
           <span className="flex-1">
             {lastAbcDate && daysSinceLastAbc !== null ? (
               <>
-                Let op! Laatste vetpercentage meting was {formatDutchDate(lastAbcDate)}, dit is {daysSinceLastAbc} dagen geleden.{" "}
+                Let op! Laatste Body Composition meting was {formatDutchDate(lastAbcDate)}, dit is {daysSinceLastAbc} dagen geleden.{" "}
                 <Link href="/abc" className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
                   Klik hier om een meting te doen.
                 </Link>
               </>
             ) : (
               <>
-                Er is nog geen vetpercentage meting gedaan.{" "}
+                Er is nog geen Body Composition meting gedaan.{" "}
                 <Link href="/abc" className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
                   Klik hier om een meting te doen.
                 </Link>

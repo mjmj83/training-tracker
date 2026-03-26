@@ -317,37 +317,6 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Client sub-links */}
-        {clientId && (
-          <div className="space-y-0.5 mt-1.5">
-            <Link href="/notes">
-              <button
-                className={`flex items-center gap-2 w-full rounded-md px-3 py-1.5 text-xs transition-colors ${
-                  location === "/notes"
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                }`}
-                data-testid="button-notes"
-              >
-                <NotebookPen className="w-3.5 h-3.5" />
-                <span>Klantnotities</span>
-              </button>
-            </Link>
-            <Link href="/abc">
-              <button
-                className={`flex items-center gap-2 w-full rounded-md px-3 py-1.5 text-xs transition-colors ${
-                  location === "/abc"
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                }`}
-                data-testid="button-abc"
-              >
-                <Calculator className="w-3.5 h-3.5" />
-                <span>Vetpercentage</span>
-              </button>
-            </Link>
-          </div>
-        )}
       </SidebarHeader>
 
       <SidebarContent>
@@ -369,6 +338,22 @@ export function AppSidebar() {
                   <Link href="/charts">
                     <BarChart3 className="w-4 h-4" />
                     <span>Charts</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/notes"}>
+                  <Link href="/notes">
+                    <NotebookPen className="w-4 h-4" />
+                    <span>Klantnotities</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/abc"}>
+                  <Link href="/abc">
+                    <Calculator className="w-4 h-4" />
+                    <span>Body Composition</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -457,7 +442,7 @@ export function AppSidebar() {
             </div>
           {dialogMode === "edit" && (
             <div className="space-y-1.5">
-              <Label className="text-xs">Vetpercentage reminder</Label>
+              <Label className="text-xs">Body Composition reminder</Label>
               <div className="flex items-center gap-2">
                 <Switch checked={dialogBfReminder} onCheckedChange={setDialogBfReminder} />
                 <span className="text-xs text-muted-foreground">

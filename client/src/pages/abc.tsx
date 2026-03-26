@@ -24,7 +24,7 @@ export default function AbcPage() {
 
   return (
     <div className="p-6 max-w-xl">
-      <h1 className="text-lg font-semibold mb-1">Vetpercentage</h1>
+      <h1 className="text-lg font-semibold mb-1">Body Composition</h1>
       <p className="text-xs text-muted-foreground mb-6">
         US Army Body Composition (AR 600-9) — schat het vetpercentage op basis van omtrekmetingen.
       </p>

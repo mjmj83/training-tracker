@@ -52,7 +52,7 @@ function CustomTooltip({ active, payload, label }: any) {
   return (
     <div className="rounded-md border px-3 py-2 text-xs" style={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))" }}>
       <p className="font-medium mb-1">{label}</p>
-      <p style={{ color: "hsl(var(--chart-1))" }}>Vetpercentage: <span className="font-semibold">{d?.bodyFatPct}%</span></p>
+      <p style={{ color: "hsl(var(--chart-1))" }}>Body fat: <span className="font-semibold">{d?.bodyFatPct}%</span></p>
       <p className="text-muted-foreground">Lengte: {d?.heightCm} cm</p>
       <p className="text-muted-foreground">Nek: {d?.neckCm} cm</p>
       <p className="text-muted-foreground">Buik: {d?.abdomenCm} cm</p>
@@ -252,7 +252,7 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
             {previewBf !== null && (
               <div className="bg-muted/50 rounded-md px-3 py-2 text-center space-y-0.5">
                 <div>
-                  <span className="text-xs text-muted-foreground">Vetpercentage: </span>
+                  <span className="text-xs text-muted-foreground">Body fat: </span>
                   <span className="text-lg font-bold text-primary">{previewBf}%</span>
                 </div>
                 {weightKg && (() => {
@@ -280,7 +280,7 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
       {/* Charts */}
       {chartData.length > 0 && (
         <>
-          <MiniChart title="Vetpercentage verloop" icon={<TrendingDown className="w-4 h-4 text-primary" />}
+          <MiniChart title="Body Composition verloop" icon={<TrendingDown className="w-4 h-4 text-primary" />}
             data={chartData} dataKey="bodyFatPct" unit="%" color="hsl(var(--chart-1))" />
           <MiniChart title="Nekomtrek" icon={<Ruler className="w-4 h-4 text-primary" />}
             data={chartData} dataKey="neckCm" unit=" cm" color="hsl(var(--chart-2))" />
