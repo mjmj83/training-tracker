@@ -19,6 +19,7 @@ interface Props {
   readOnly?: boolean;
   previousWeight?: number | null;
   previousReps?: number | null;
+  weightType?: string;
 }
 
 export default function WeightCell({
@@ -27,7 +28,9 @@ export default function WeightCell({
   readOnly = false,
   previousWeight,
   previousReps,
+  weightType,
 }: Props) {
+  const isRepsOnly = weightType === "reps_only";
   const [weight, setWeight] = useState(initialWeight !== null ? String(initialWeight) : "");
   const [reps, setReps] = useState(initialReps !== null ? String(initialReps) : "");
   const [notes, setNotes] = useState(initialNotes || "");
@@ -79,24 +82,28 @@ export default function WeightCell({
         className="group/cell flex items-center gap-0.5 rounded bg-muted/40 px-1 py-0.5 relative"
         data-testid={`weight-cell-${exerciseId}-w${weekNumber}-s${setNumber}`}
       >
-        <input
-          value={weight}
-          onChange={(e) => { if (!readOnly) setWeight(e.target.value); }}
-          onBlur={handleBlur}
-          onFocus={handleWeightFocus}
-          placeholder={previousWeight != null ? String(previousWeight) : "kg"}
-          className="w-[36px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
-          readOnly={readOnly}
-          data-testid={`input-weight-${exerciseId}-w${weekNumber}-s${setNumber}`}
-        />
-        <span className="text-muted-foreground text-xs">x</span>
+        {!isRepsOnly && (
+          <>
+            <input
+              value={weight}
+              onChange={(e) => { if (!readOnly) setWeight(e.target.value); }}
+              onBlur={handleBlur}
+              onFocus={handleWeightFocus}
+              placeholder={previousWeight != null ? String(previousWeight) : "kg"}
+              className="w-[36px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
+              readOnly={readOnly}
+              data-testid={`input-weight-${exerciseId}-w${weekNumber}-s${setNumber}`}
+            />
+            <span className="text-muted-foreground text-xs">x</span>
+          </>
+        )}
         <input
           value={reps}
           onChange={(e) => { if (!readOnly) setReps(e.target.value); }}
           onBlur={handleBlur}
           onFocus={handleRepsFocus}
           placeholder={previousReps != null ? String(previousReps) : "r"}
-          className="w-[24px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
+          className={`bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono ${isRepsOnly ? "w-[36px]" : "w-[24px]"}`}
           readOnly={readOnly}
           data-testid={`input-reps-${exerciseId}-w${weekNumber}-s${setNumber}`}
         />

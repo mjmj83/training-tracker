@@ -53,6 +53,7 @@ export const exercises = sqliteTable("exercises", {
   tempo: text("tempo").default(""),
   rest: integer("rest").default(60), // seconds
   rir: text("rir").default(""), // Reps In Reserve e.g. "2" or "0-1"
+  weightType: text("weight_type").notNull().default("weighted"), // 'weighted' | 'reps_only'
   notes: text("notes").default(""), // personal notes/remarks
   supersetGroupId: integer("superset_group_id"), // null = standalone, same value = grouped superset
   sortOrder: integer("sort_order").notNull().default(0),
@@ -95,6 +96,7 @@ export const exerciseLibrary = sqliteTable("exercise_library", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   active: integer("active").notNull().default(1), // 1 = active, 0 = inactive
+  weightType: text("weight_type").notNull().default("weighted"), // 'weighted' | 'reps_only'
   ownerId: integer("owner_id"), // user who owns this library entry
 });
 

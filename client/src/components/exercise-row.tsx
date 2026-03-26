@@ -1,10 +1,13 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, GripVertical, Unlink, MessageCircleWarning, BarChart3 } from "lucide-react";
+import { Trash2, GripVertical, Unlink, MessageCircleWarning, BarChart3, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import WeightCell from "@/components/weight-cell";
 import ConfirmDialog from "@/components/confirm-dialog";
@@ -44,10 +47,12 @@ export default function ExerciseRow({
   const [rest, setRest] = useState(String(exercise.rest ?? 60));
   const [rir, setRir] = useState(exercise.rir ?? "");
   const [notes, setNotes] = useState(exercise.notes ?? "");
+  const [weightType, setWeightType] = useState(exercise.weightType ?? "weighted");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showChart, setShowChart] = useState(false);
   const [showNotesDialog, setShowNotesDialog] = useState(false);
   const [editingNotes, setEditingNotes] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
 
   const updateExercise = useMutation({
     mutationFn: (data: Partial<Exercise>) =>
@@ -189,7 +194,7 @@ export default function ExerciseRow({
           {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-6", placeholder: "—" })}
         </div>
 
-        {/* Line 3: Notes — always shown */}
+        {/* Line 3: Notes + settings — always shown */}
         {!readOnly ? (
           <div className="flex items-center gap-1 mt-0.5">
             <button
@@ -199,6 +204,34 @@ export default function ExerciseRow({
             >
               <MessageCircleWarning className="w-3.5 h-3.5" />
             </button>
+            <Popover open={showSettings} onOpenChange={setShowSettings}>
+              <PopoverTrigger asChild>
+                <button
+                  className={`shrink-0 ${weightType === "reps_only" ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+                  data-testid={`button-settings-${exercise.id}`}
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-auto p-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`weight-toggle-${exercise.id}`}
+                    checked={weightType === "weighted"}
+                    onCheckedChange={(checked) => {
+                      const newType = checked ? "weighted" : "reps_only";
+                      setWeightType(newType);
+                      onBeforeChange();
+                      updateExercise.mutate({ weightType: newType });
+                    }}
+                    data-testid={`toggle-weight-type-${exercise.id}`}
+                  />
+                  <Label htmlFor={`weight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
+                    Gewicht
+                  </Label>
+                </div>
+              </PopoverContent>
+            </Popover>
             {hasNotes && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -249,6 +282,7 @@ export default function ExerciseRow({
                   readOnly={readOnly}
                   previousWeight={prevLog?.weight}
                   previousReps={prevLog?.reps}
+                  weightType={weightType}
                 />
               );
             })}

@@ -119,10 +119,10 @@ export function registerRoutes(server: Server, app: Express): void {
   });
   app.post("/api/exercises", (req, res) => {
     const user = (req as any).user;
-    const { trainingDayId, name, sets, goalReps, tempo, rest, rir, notes, supersetGroupId, sortOrder } = req.body;
+    const { trainingDayId, name, sets, goalReps, tempo, rest, rir, weightType, notes, supersetGroupId, sortOrder } = req.body;
     res.json(storage.createExercise({
       trainingDayId, name, sets: sets ?? 3, goalReps: goalReps ?? 10,
-      tempo: tempo ?? "", rest: rest ?? 60, rir: rir ?? "", notes: notes ?? "", supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
+      tempo: tempo ?? "", rest: rest ?? 60, rir: rir ?? "", weightType: weightType ?? "weighted", notes: notes ?? "", supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
     }, user.id));
   });
   app.patch("/api/exercises/:id", (req, res) => {
@@ -193,7 +193,7 @@ export function registerRoutes(server: Server, app: Express): void {
         const exercises = storage.getExercisesByTrainingDay(day.id);
         const match = exercises.find(e => e.name.toLowerCase() === name.toLowerCase());
         if (match) {
-          return res.json({ sets: match.sets, goalReps: match.goalReps, tempo: match.tempo, rest: match.rest, rir: (match as any).rir || "" });
+          return res.json({ sets: match.sets, goalReps: match.goalReps, tempo: match.tempo, rest: match.rest, rir: (match as any).rir || "", weightType: (match as any).weightType || "weighted" });
         }
       }
     }
@@ -223,6 +223,9 @@ export function registerRoutes(server: Server, app: Express): void {
     }
     if (req.body.name && req.body.oldName) {
       storage.renameExerciseInLibrary(id, req.body.oldName, req.body.name);
+    }
+    if (req.body.weightType !== undefined) {
+      storage.updateExerciseLibraryWeightType(id, req.body.weightType);
     }
     res.json({ ok: true });
   });

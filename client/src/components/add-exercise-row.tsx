@@ -32,7 +32,7 @@ export default function AddExerciseRow({ trainingDayId, monthId, sortOrder, onBe
   const createExercise = useMutation({
     mutationFn: async (name: string) => {
       // Try to fetch last-used config for this exercise name
-      let config: { sets: number; goalReps: number; tempo: string; rest: number; rir: string } | null = null;
+      let config: { sets: number; goalReps: number; tempo: string; rest: number; rir: string; weightType?: string } | null = null;
       if (clientId) {
         try {
           const res = await apiRequest("GET", `/api/clients/${clientId}/exercise-config/${encodeURIComponent(name)}`);
@@ -49,6 +49,7 @@ export default function AddExerciseRow({ trainingDayId, monthId, sortOrder, onBe
         tempo: config?.tempo ?? "",
         rest: config?.rest ?? 60,
         rir: config?.rir ?? "",
+        weightType: config?.weightType ?? "weighted",
         sortOrder,
       });
     },

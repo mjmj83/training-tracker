@@ -108,6 +108,8 @@ try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN active INTEGER NOT NU
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN gender TEXT NOT NULL DEFAULT 'male'"); } catch {}
 try { sqlite.exec("ALTER TABLE months ADD COLUMN start_date TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN rir TEXT DEFAULT ''"); } catch {}
+try { sqlite.exec("ALTER TABLE exercises ADD COLUMN weight_type TEXT NOT NULL DEFAULT 'weighted'"); } catch {}
+try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN weight_type TEXT NOT NULL DEFAULT 'weighted'"); } catch {}
 
 // Multi-tenant migrations
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN owner_id INTEGER"); } catch {}
@@ -403,6 +405,9 @@ export class SqliteStorage {
   }
   toggleExerciseLibraryActive(id: number, active: boolean): void {
     sqlite.prepare("UPDATE exercise_library SET active = ? WHERE id = ?").run(active ? 1 : 0, id);
+  }
+  updateExerciseLibraryWeightType(id: number, weightType: string): void {
+    sqlite.prepare("UPDATE exercise_library SET weight_type = ? WHERE id = ?").run(weightType, id);
   }
   renameExerciseInLibrary(id: number, oldName: string, newName: string): void {
     // Update library entry

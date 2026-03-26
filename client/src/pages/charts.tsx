@@ -27,6 +27,7 @@ interface FullMonthData {
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0]?.payload;
+  const isRepsOnly = data?.isRepsOnly;
   return (
     <div
       className="rounded-md border px-3 py-2 text-xs"
@@ -36,12 +37,20 @@ function CustomTooltip({ active, payload, label }: any) {
       }}
     >
       <p className="font-medium mb-1">{label}</p>
-      <p style={{ color: "hsl(var(--chart-1))" }}>
-        Gewicht: <span className="font-semibold">{data?.lastSetWeight ?? "—"} kg</span>
-      </p>
-      <p style={{ color: "hsl(var(--muted-foreground))" }}>
-        Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
-      </p>
+      {isRepsOnly ? (
+        <p style={{ color: "hsl(var(--chart-1))" }}>
+          Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+        </p>
+      ) : (
+        <>
+          <p style={{ color: "hsl(var(--chart-1))" }}>
+            Gewicht: <span className="font-semibold">{data?.lastSetWeight ?? "—"} kg</span>
+          </p>
+          <p style={{ color: "hsl(var(--muted-foreground))" }}>
+            Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+          </p>
+        </>
+      )}
       {data?.source && (
         <p className="text-muted-foreground mt-0.5">{data.source}</p>
       )}
@@ -50,8 +59,9 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 /** Build chart data points from an array of FullMonthData blocks */
-export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; data: any[] }[] {
+export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; data: any[]; isRepsOnly: boolean }[] {
   const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; source: string; sortDate: string }[]>();
+  const exerciseHasWeight = new Map<string, boolean>();
 
   for (const block of blocks) {
     const weekCount = block.month?.weekCount ?? 4;
@@ -79,6 +89,9 @@ export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; da
             : `${blockLabel} ${day.name} W${w}`;
 
           if (!exerciseMap.has(ex.name)) exerciseMap.set(ex.name, []);
+          if (lastSet.weight && lastSet.weight > 0) {
+            exerciseHasWeight.set(ex.name, true);
+          }
           exerciseMap.get(ex.name)!.push({
             week: label,
             lastSetWeight: lastSet.weight ?? 0,
@@ -91,10 +104,13 @@ export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; da
     }
   }
 
-  const charts: { name: string; data: any[] }[] = [];
+  const charts: { name: string; data: any[]; isRepsOnly: boolean }[] = [];
   for (const [name, points] of exerciseMap) {
-    const sorted = points.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
-    charts.push({ name, data: sorted });
+    const isRepsOnly = !exerciseHasWeight.get(name);
+    const sorted = points
+      .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
+      .map(p => ({ ...p, isRepsOnly }));
+    charts.push({ name, data: sorted, isRepsOnly });
   }
   return charts;
 }
@@ -162,6 +178,9 @@ export default function ChartsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {sortedCharts.map((chart, i) => {
           const isHighlighted = chart.name === highlightName;
+          const dataKey = chart.isRepsOnly ? "lastSetReps" : "lastSetWeight";
+          const yLabel = chart.isRepsOnly ? "reps" : "kg";
+          const lineName = chart.isRepsOnly ? "Laatste set (reps)" : "Laatste set (kg)";
           return (
             <div
               key={`${chart.name}-${i}`}
@@ -186,7 +205,7 @@ export default function ChartsPage() {
                         tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                         domain={["dataMin - 5", "dataMax + 5"]}
                         label={{
-                          value: "kg",
+                          value: yLabel,
                           angle: -90,
                           position: "insideLeft",
                           style: { fontSize: 10, fill: "hsl(var(--muted-foreground))" },
@@ -195,12 +214,12 @@ export default function ChartsPage() {
                       <Tooltip content={<CustomTooltip />} />
                       <Line
                         type="monotone"
-                        dataKey="lastSetWeight"
+                        dataKey={dataKey}
                         stroke="hsl(var(--chart-1))"
                         strokeWidth={2}
                         dot={{ r: 4, fill: "hsl(var(--chart-1))" }}
                         activeDot={{ r: 6 }}
-                        name="Laatste set (kg)"
+                        name={lineName}
                       />
                     </LineChart>
                   </ResponsiveContainer>

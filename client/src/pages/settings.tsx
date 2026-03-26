@@ -35,6 +35,15 @@ export default function SettingsPage() {
     },
   });
 
+  const toggleWeightType = useMutation({
+    mutationFn: (data: { id: number; weightType: string }) =>
+      apiRequest("PATCH", `/api/exercise-library/${data.id}`, { weightType: data.weightType }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/exercise-library/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exercise-library"] });
+    },
+  });
+
   const renameExercise = useMutation({
     mutationFn: (data: { id: number; oldName: string; name: string }) =>
       apiRequest("PATCH", `/api/exercise-library/${data.id}`, { oldName: data.oldName, name: data.name }),
@@ -155,6 +164,20 @@ export default function SettingsPage() {
                   </button>
                 </>
               )}
+              <button
+                onClick={() => toggleWeightType.mutate({
+                  id: ex.id,
+                  weightType: (ex.weightType ?? "weighted") === "weighted" ? "reps_only" : "weighted",
+                })}
+                className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 cursor-pointer transition-colors ${
+                  (ex.weightType ?? "weighted") === "reps_only"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+                data-testid={`toggle-library-weight-type-${ex.id}`}
+              >
+                {(ex.weightType ?? "weighted") === "reps_only" ? "reps" : "kg"}
+              </button>
               <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${ex.active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
                 {ex.active ? "actief" : "inactief"}
               </span>
