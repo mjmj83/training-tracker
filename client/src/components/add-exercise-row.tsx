@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useSelectedClient } from "@/lib/state";
 import { Plus } from "lucide-react";
 import type { ExerciseLibrary } from "@shared/schema";
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function AddExerciseRow({ trainingDayId, monthId, sortOrder, onBeforeChange }: Props) {
+  const { clientId } = useSelectedClient();
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -28,16 +30,28 @@ export default function AddExerciseRow({ trainingDayId, monthId, sortOrder, onBe
   });
 
   const createExercise = useMutation({
-    mutationFn: (name: string) =>
-      apiRequest("POST", "/api/exercises", {
+    mutationFn: async (name: string) => {
+      // Try to fetch last-used config for this exercise name
+      let config: { sets: number; goalReps: number; tempo: string; rest: number; rir: string } | null = null;
+      if (clientId) {
+        try {
+          const res = await apiRequest("GET", `/api/clients/${clientId}/exercise-config/${encodeURIComponent(name)}`);
+          config = await res.json();
+        } catch {
+          // Ignore — use defaults
+        }
+      }
+      return apiRequest("POST", "/api/exercises", {
         trainingDayId,
         name,
-        sets: 3,
-        goalReps: 10,
-        tempo: "",
-        rest: 60,
+        sets: config?.sets ?? 3,
+        goalReps: config?.goalReps ?? 10,
+        tempo: config?.tempo ?? "",
+        rest: config?.rest ?? 60,
+        rir: config?.rir ?? "",
         sortOrder,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
       setSearchQuery("");

@@ -107,6 +107,7 @@ try { sqlite.exec("ALTER TABLE clients ADD COLUMN notes TEXT DEFAULT ''"); } cat
 try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN active INTEGER NOT NULL DEFAULT 1"); } catch {}
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN gender TEXT NOT NULL DEFAULT 'male'"); } catch {}
 try { sqlite.exec("ALTER TABLE months ADD COLUMN start_date TEXT"); } catch {}
+try { sqlite.exec("ALTER TABLE exercises ADD COLUMN rir TEXT DEFAULT ''"); } catch {}
 
 // Multi-tenant migrations
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN owner_id INTEGER"); } catch {}

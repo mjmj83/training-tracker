@@ -52,6 +52,7 @@ export const exercises = sqliteTable("exercises", {
   goalReps: integer("goal_reps").notNull().default(10),
   tempo: text("tempo").default(""),
   rest: integer("rest").default(60), // seconds
+  rir: text("rir").default(""), // Reps In Reserve e.g. "2" or "0-1"
   notes: text("notes").default(""), // personal notes/remarks
   supersetGroupId: integer("superset_group_id"), // null = standalone, same value = grouped superset
   sortOrder: integer("sort_order").notNull().default(0),

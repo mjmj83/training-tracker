@@ -119,10 +119,10 @@ export function registerRoutes(server: Server, app: Express): void {
   });
   app.post("/api/exercises", (req, res) => {
     const user = (req as any).user;
-    const { trainingDayId, name, sets, goalReps, tempo, rest, notes, supersetGroupId, sortOrder } = req.body;
+    const { trainingDayId, name, sets, goalReps, tempo, rest, rir, notes, supersetGroupId, sortOrder } = req.body;
     res.json(storage.createExercise({
       trainingDayId, name, sets: sets ?? 3, goalReps: goalReps ?? 10,
-      tempo: tempo ?? "", rest: rest ?? 60, notes: notes ?? "", supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
+      tempo: tempo ?? "", rest: rest ?? 60, rir: rir ?? "", notes: notes ?? "", supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
     }, user.id));
   });
   app.patch("/api/exercises/:id", (req, res) => {
@@ -173,6 +173,31 @@ export function registerRoutes(server: Server, app: Express): void {
   app.post("/api/weight-logs", (req, res) => {
     const { exerciseId, weekNumber, setNumber, weight, reps, notes } = req.body;
     res.json(storage.upsertWeightLog({ exerciseId, weekNumber, setNumber, weight, reps, notes: notes ?? "" }));
+  });
+
+  // ============= EXERCISE LAST CONFIG =============
+  // Get the most recently used settings for an exercise name (across all blocks for this client)
+  app.get("/api/clients/:clientId/exercise-config/:name", (req, res) => {
+    const clientId = parseInt(req.params.clientId);
+    const name = decodeURIComponent(req.params.name);
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
+    
+    // Find the exercise across all blocks for this client, sorted by most recent
+    const allMonths = storage.getMonthsByClient(clientId);
+    // Sort months by startDate descending
+    allMonths.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+    
+    for (const month of allMonths) {
+      const days = storage.getTrainingDaysByMonth(month.id);
+      for (const day of days) {
+        const exercises = storage.getExercisesByTrainingDay(day.id);
+        const match = exercises.find(e => e.name.toLowerCase() === name.toLowerCase());
+        if (match) {
+          return res.json({ sets: match.sets, goalReps: match.goalReps, tempo: match.tempo, rest: match.rest, rir: (match as any).rir || "" });
+        }
+      }
+    }
+    res.json(null); // No previous config found
   });
 
   // ============= EXERCISE LIBRARY =============
@@ -234,6 +259,9 @@ export function registerRoutes(server: Server, app: Express): void {
   // All blocks for a client (for cross-block charts)
   app.get("/api/clients/:clientId/all-blocks", (req, res) => {
     const clientId = parseInt(req.params.clientId);
+    const user = (req as any).user;
+    const client = storage.getClient(clientId);
+    console.log(`[all-blocks] clientId=${clientId} client.ownerId=${client?.ownerId} user.id=${user?.id} user.role=${user?.role}`);
     if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
     const allMonths = storage.getMonthsByClient(clientId);
     const blocks = allMonths.map(m => storage.getFullMonthData(m.id));

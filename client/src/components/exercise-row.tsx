@@ -42,6 +42,7 @@ export default function ExerciseRow({
   const [goalReps, setGoalReps] = useState(exercise.goalReps);
   const [tempo, setTempo] = useState(exercise.tempo ?? "");
   const [rest, setRest] = useState(exercise.rest ?? 60);
+  const [rir, setRir] = useState(exercise.rir ?? "");
   const [notes, setNotes] = useState(exercise.notes ?? "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showChart, setShowChart] = useState(false);
@@ -218,6 +219,19 @@ export default function ExerciseRow({
           className="w-full bg-transparent border-none outline-none text-center text-xs tabular-nums"
           readOnly={readOnly}
           data-testid={`input-rest-${exercise.id}`}
+        />
+      </td>
+
+      {/* RIR */}
+      <td className="py-1 px-1 text-center">
+        <input
+          value={rir}
+          onChange={(e) => { if (!readOnly) setRir(e.target.value); }}
+          onBlur={() => handleBlur("rir", rir)}
+          className="w-full bg-transparent border-none outline-none text-center text-xs"
+          placeholder="—"
+          readOnly={readOnly}
+          data-testid={`input-rir-${exercise.id}`}
         />
       </td>
 

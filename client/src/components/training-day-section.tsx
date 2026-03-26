@@ -165,6 +165,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                 <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">Reps</th>
                 <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[60px]">Tempo</th>
                 <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">Rest</th>
+                <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">RIR</th>
                 {weeks.map((w) => (
                   <th
                     key={w}
