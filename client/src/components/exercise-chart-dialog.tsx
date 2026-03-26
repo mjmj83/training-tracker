@@ -128,7 +128,7 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
             {/* Volume chart — only for weighted exercises */}
             {!isRepsOnly && chartData.some(d => d.volume > 0) && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Totaal volume (kg × reps)</p>
+                <p className="text-xs text-muted-foreground mb-1">Volume Load (kg x reps)</p>
                 <ResponsiveContainer width="100%" height={160}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
