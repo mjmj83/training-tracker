@@ -115,9 +115,9 @@ export default function ExerciseRow({
     placeholder?: string;
   }) => (
     <div className="flex items-center gap-0.5">
-      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       {readOnly ? (
-        <span className="text-[11px] font-medium">{value || "—"}</span>
+        <span className="text-[13px] font-medium">{value || "—"}</span>
       ) : (
         <input
           type="text"
@@ -138,7 +138,7 @@ export default function ExerciseRow({
             onFieldBlur();
           }}
           placeholder={placeholder}
-          className={`${inputWidth} text-[11px] text-center bg-muted/50 border border-border rounded px-1 py-0 h-5 outline-none focus:ring-1 focus:ring-primary`}
+          className={`${inputWidth} text-[13px] text-center bg-muted/50 border border-border rounded px-1 py-0 h-[22px] outline-none focus:ring-1 focus:ring-primary`}
           data-testid={`input-${field}-${exercise.id}`}
         />
       )}
@@ -167,14 +167,14 @@ export default function ExerciseRow({
             <GripVertical className="w-3 h-3 text-muted-foreground/40 cursor-grab shrink-0" />
           )}
           {isSuperset && (
-            <span className="text-[9px] text-primary font-bold shrink-0 mr-0.5">SS</span>
+            <span className="text-[11px] text-primary font-bold shrink-0 mr-0.5">SS</span>
           )}
           <div className="flex-1 min-w-0">
             <input
               value={name}
               onChange={(e) => { if (!readOnly) setName(e.target.value); }}
               onBlur={() => handleBlur("name", name)}
-              className="w-full bg-transparent border-none outline-none text-xs font-medium"
+              className="w-full bg-transparent border-none outline-none text-sm font-medium"
               readOnly={readOnly}
               data-testid={`input-exercise-name-${exercise.id}`}
             />
@@ -275,7 +275,7 @@ export default function ExerciseRow({
         {hasNotes && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <p className="text-[10px] text-muted-foreground italic truncate max-w-[240px] cursor-default leading-tight mt-0.5">
+              <p className="text-xs text-muted-foreground italic truncate max-w-[280px] cursor-default leading-tight mt-0.5">
                 {notes}
               </p>
             </TooltipTrigger>

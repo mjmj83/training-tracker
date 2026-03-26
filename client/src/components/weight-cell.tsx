@@ -64,17 +64,17 @@ export default function WeightCell({
           onChange={(e) => { if (!readOnly) setWeight(e.target.value); }}
           onBlur={handleBlur}
           placeholder="kg"
-          className="w-[32px] bg-transparent border-none outline-none text-center text-xs tabular-nums font-mono"
+          className="w-[36px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
           readOnly={readOnly}
           data-testid={`input-weight-${exerciseId}-w${weekNumber}-s${setNumber}`}
         />
-        <span className="text-muted-foreground text-[10px]">x</span>
+        <span className="text-muted-foreground text-xs">x</span>
         <input
           value={reps}
           onChange={(e) => { if (!readOnly) setReps(e.target.value); }}
           onBlur={handleBlur}
           placeholder="r"
-          className="w-[20px] bg-transparent border-none outline-none text-center text-xs tabular-nums font-mono"
+          className="w-[24px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
           readOnly={readOnly}
           data-testid={`input-reps-${exerciseId}-w${weekNumber}-s${setNumber}`}
         />
