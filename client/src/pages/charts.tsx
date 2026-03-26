@@ -60,7 +60,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 /** Build chart data points from an array of FullMonthData blocks */
 export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; data: any[]; isRepsOnly: boolean }[] {
-  const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; source: string; sortDate: string }[]>();
+  const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; volume: number; source: string; sortDate: string }[]>();
   const exerciseHasWeight = new Map<string, boolean>();
 
   for (const block of blocks) {
@@ -79,6 +79,13 @@ export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; da
             l.setNumber > best.setNumber ? l : best
           , weekLogs[0]);
 
+          // Calculate total volume: sum of (weight * reps) for all sets
+          const volume = weekLogs.reduce((sum, l) => {
+            const w2 = l.weight ?? 0;
+            const r = l.reps ?? 0;
+            return sum + (w2 * r);
+          }, 0);
+
           const weekDate = block.weekDates.find(
             (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
           );
@@ -96,6 +103,7 @@ export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; da
             week: label,
             lastSetWeight: lastSet.weight ?? 0,
             lastSetReps: lastSet.reps,
+            volume: Math.round(volume),
             source: `${blockLabel} · ${day.name} W${w}`,
             sortDate: dateStr || `${block.month?.startDate || "9999"}-${day.sortOrder}-${w}`,
           });

@@ -34,7 +34,7 @@ export default function WeekCountSelector({ monthId, currentCount }: Props) {
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Aantal weken</p>
           <div className="flex gap-1 flex-wrap">
-            {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <button
                 key={n}
                 onClick={() => updateMonth.mutate(n)}
