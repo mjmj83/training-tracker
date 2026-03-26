@@ -106,6 +106,7 @@ try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN notes TEXT DEFAULT ''"); }
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN notes TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN active INTEGER NOT NULL DEFAULT 1"); } catch {}
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN gender TEXT NOT NULL DEFAULT 'male'"); } catch {}
+try { sqlite.exec("ALTER TABLE clients ADD COLUMN bf_reminder_enabled INTEGER NOT NULL DEFAULT 1"); } catch {}
 try { sqlite.exec("ALTER TABLE months ADD COLUMN start_date TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN rir TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN weight_type TEXT NOT NULL DEFAULT 'weighted'"); } catch {}

@@ -1,4 +1,5 @@
 import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator, LogOut, KeyRound, Shield } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -61,6 +62,7 @@ export function AppSidebar() {
   const [dialogClientId, setDialogClientId] = useState<number | null>(null);
   const [dialogName, setDialogName] = useState("");
   const [dialogGender, setDialogGender] = useState<"male" | "female">("male");
+  const [dialogBfReminder, setDialogBfReminder] = useState(true);
 
   // Client login dialog state
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
@@ -110,10 +112,11 @@ export function AppSidebar() {
   });
 
   const updateClient = useMutation({
-    mutationFn: (data: { id: number; name?: string; gender?: string }) => {
-      const body: Record<string, string> = {};
+    mutationFn: (data: { id: number; name?: string; gender?: string; bfReminderEnabled?: number }) => {
+      const body: Record<string, string | number> = {};
       if (data.name !== undefined) body.name = data.name;
       if (data.gender !== undefined) body.gender = data.gender;
+      if (data.bfReminderEnabled !== undefined) body.bfReminderEnabled = data.bfReminderEnabled;
       return apiRequest("PATCH", `/api/clients/${data.id}`, body);
     },
     onSuccess: () => {
@@ -162,6 +165,7 @@ export function AppSidebar() {
     setDialogClientId(client.id);
     setDialogName(client.name);
     setDialogGender((client.gender as "male" | "female") || "male");
+    setDialogBfReminder(!!client.bfReminderEnabled);
     setClientPopoverOpen(false);
     setDialogOpen(true);
   };
@@ -171,7 +175,7 @@ export function AppSidebar() {
     if (dialogMode === "create") {
       createClient.mutate({ name: dialogName.trim(), gender: dialogGender });
     } else if (dialogClientId) {
-      updateClient.mutate({ id: dialogClientId, name: dialogName.trim(), gender: dialogGender });
+      updateClient.mutate({ id: dialogClientId, name: dialogName.trim(), gender: dialogGender, bfReminderEnabled: dialogBfReminder ? 1 : 0 });
     }
   };
 
@@ -451,6 +455,17 @@ export function AppSidebar() {
                 </button>
               </div>
             </div>
+          {dialogMode === "edit" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Vetpercentage reminder</Label>
+              <div className="flex items-center gap-2">
+                <Switch checked={dialogBfReminder} onCheckedChange={setDialogBfReminder} />
+                <span className="text-xs text-muted-foreground">
+                  {dialogBfReminder ? "Herinnering actief (na 30 dagen)" : "Herinnering uitgeschakeld"}
+                </span>
+              </div>
+            </div>
+          )}
           </div>
           <DialogFooter>
             <Button

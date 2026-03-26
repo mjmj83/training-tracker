@@ -8,6 +8,7 @@ export const clients = sqliteTable("clients", {
   name: text("name").notNull(),
   gender: text("gender").notNull().default("male"), // 'male' | 'female'
   notes: text("notes").default(""),
+  bfReminderEnabled: integer("bf_reminder_enabled").notNull().default(1), // 1 = on, 0 = off
   ownerId: integer("owner_id"), // user who owns this client
 });
 

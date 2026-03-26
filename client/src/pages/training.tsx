@@ -1,7 +1,7 @@
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dumbbell, Undo2, Redo2, Save, Plus } from "lucide-react";
+import { Dumbbell, Undo2, Redo2, Save, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import TrainingDaySection from "@/components/training-day-section";
@@ -10,9 +10,10 @@ import WeekCountSelector from "@/components/week-count-selector";
 import MonthSwitcher from "@/components/month-switcher";
 import { useUndoRedo } from "@/lib/undo-redo";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
-import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
-import { useEffect, useCallback } from "react";
+import type { TrainingDay, Exercise, WeightLog, WeekDate, Month, Client, AbcMeasurement } from "@shared/schema";
+import { useEffect, useCallback, useState } from "react";
 import { useQuery as useQueryAuto } from "@tanstack/react-query";
+import { Link } from "wouter";
 
 interface FullMonthData {
   month: Month;
@@ -28,6 +29,25 @@ export default function TrainingPage() {
   const { toast } = useToast();
   const { canUndo, canRedo, undo, redo, pushSnapshot, undoCount, redoCount } = useUndoRedo(monthId);
   const isTrainer = useIsTrainer();
+  const [bfBannerDismissed, setBfBannerDismissed] = useState(false);
+
+  // Fetch clients to get bfReminderEnabled for the selected client
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+  const selectedClient = clients.find(c => c.id === clientId);
+
+  // Fetch ABC measurements for selected client
+  const { data: abcMeasurements = [] } = useQuery<AbcMeasurement[]>({
+    queryKey: ["/api/clients", clientId, "abc"],
+    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/abc`).then(r => r.json()),
+    enabled: !!clientId && isTrainer && !!selectedClient?.bfReminderEnabled,
+  });
+
+  // Reset dismissed state when client changes
+  useEffect(() => {
+    setBfBannerDismissed(false);
+  }, [clientId]);
 
   const { data, isLoading } = useQuery<FullMonthData>({
     queryKey: ["/api/months", monthId, "full"],
@@ -111,8 +131,55 @@ export default function TrainingPage() {
   const weekDates = data?.weekDates ?? [];
   const weekCount = month?.weekCount ?? 4;
 
+  // Compute body fat reminder
+  const showBfReminder = isTrainer && !!clientId && !!selectedClient?.bfReminderEnabled && !bfBannerDismissed;
+  const lastAbcMeasurement = abcMeasurements.length > 0
+    ? abcMeasurements.reduce((latest, m) => (m.date > latest.date ? m : latest), abcMeasurements[0])
+    : null;
+  const lastAbcDate = lastAbcMeasurement ? new Date(lastAbcMeasurement.date) : null;
+  const daysSinceLastAbc = lastAbcDate
+    ? Math.floor((Date.now() - lastAbcDate.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const bfReminderNeeded = showBfReminder && (daysSinceLastAbc === null || daysSinceLastAbc > 30);
+
+  const formatDutchDate = (date: Date) => {
+    const months = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
   return (
     <div className="p-4 space-y-2">
+      {/* Body fat reminder banner */}
+      {bfReminderNeeded && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-4 py-3 flex items-start gap-2 text-sm">
+          <span className="shrink-0 mt-0.5">⚠️</span>
+          <span className="flex-1">
+            {lastAbcDate && daysSinceLastAbc !== null ? (
+              <>
+                Let op! Laatste vetpercentage meting was {formatDutchDate(lastAbcDate)}, dit is {daysSinceLastAbc} dagen geleden.{" "}
+                <Link href="/abc" className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
+                  Klik hier om een meting te doen.
+                </Link>
+              </>
+            ) : (
+              <>
+                Er is nog geen vetpercentage meting gedaan.{" "}
+                <Link href="/abc" className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
+                  Klik hier om een meting te doen.
+                </Link>
+              </>
+            )}
+          </span>
+          <button
+            onClick={() => setBfBannerDismissed(true)}
+            className="shrink-0 p-0.5 rounded hover:bg-amber-200/50 dark:hover:bg-amber-800/50 transition-colors"
+            title="Sluiten"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
         <MonthSwitcher readOnly={!isTrainer} />
