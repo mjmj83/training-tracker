@@ -120,19 +120,23 @@ export default function ExerciseRow({
         <span className="text-[11px] font-medium">{value || "—"}</span>
       ) : (
         <input
-          type={type}
-          min={min}
-          max={max}
-          step={step}
+          type="text"
+          inputMode={type === "number" ? "numeric" : "text"}
           value={value}
           onChange={(e) => {
             if (type === "number") {
-              onChange(parseInt(e.target.value) || (min ?? 1));
+              const num = parseInt(e.target.value);
+              onChange(isNaN(num) ? "" : num);
             } else {
               onChange(e.target.value);
             }
           }}
-          onBlur={onFieldBlur}
+          onBlur={(e) => {
+            if (type === "number" && e.target.value === "") {
+              onChange(min ?? 1);
+            }
+            onFieldBlur();
+          }}
           placeholder={placeholder}
           className={`${inputWidth} text-[11px] text-center bg-muted/50 border border-border rounded px-1 py-0 h-5 outline-none focus:ring-1 focus:ring-primary`}
           data-testid={`input-${field}-${exercise.id}`}
