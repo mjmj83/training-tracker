@@ -192,11 +192,11 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
           <table className="w-full text-sm border-collapse" data-testid={`table-exercises-${day.id}`}>
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-1.5 px-2 font-medium text-muted-foreground min-w-[260px]">Oefening</th>
+                <th className="text-left py-1.5 px-2 font-medium text-muted-foreground w-auto">Oefening</th>
                 {weeks.map((w) => (
                   <th
                     key={w}
-                    className={`text-center py-1.5 px-1 font-medium text-muted-foreground min-w-[120px] transition-colors ${hoveredWeek === w ? "bg-primary/10" : ""}`}
+                    className={`text-center py-1.5 px-1 font-medium text-muted-foreground w-[110px] max-w-[110px] transition-colors ${hoveredWeek === w ? "bg-primary/10" : ""}`}
                     onMouseEnter={() => setHoveredWeek(w)}
                     onMouseLeave={() => setHoveredWeek(null)}
                   >

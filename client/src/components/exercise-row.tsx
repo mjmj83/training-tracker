@@ -302,11 +302,11 @@ export default function ExerciseRow({
       {weeks.map((weekNum) => (
         <td
           key={weekNum}
-          className={`py-1 px-1 transition-colors ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
+          className={`py-1 px-1 w-[110px] max-w-[110px] transition-colors ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
           onMouseEnter={() => onWeekHover(weekNum)}
           onMouseLeave={() => onWeekHover(null)}
         >
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col items-center gap-0.5">
             {Array.from({ length: parseInt(String(sets)) || 3 }, (_, i) => i + 1).map((setNum) => {
               const log = getLog(weekNum, setNum);
               const prevLog = setNum > 1 ? getLog(weekNum, setNum - 1) : null;
