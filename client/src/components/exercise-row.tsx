@@ -152,7 +152,7 @@ export default function ExerciseRow({
 
   return (
     <tr
-      className={`border-b border-border hover:bg-muted/50 transition-colors group bg-card/60 ${supersetClass} ${dragOverClass}`}
+      className={`border border-border hover:bg-muted/50 transition-colors group bg-card/60 rounded-lg ${supersetClass} ${dragOverClass}`}
       draggable={!readOnly}
       onDragStart={(e) => {
         if (readOnly) { e.preventDefault(); return; }
@@ -184,46 +184,6 @@ export default function ExerciseRow({
             >
               <BarChart3 className="w-3.5 h-3.5" />
             </button>
-            {!readOnly && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="text-muted-foreground/40 hover:text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${exercise.id}`}>
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {isSuperset && (
-                    <DropdownMenuItem onClick={() => { onBeforeChange(); unSuperset.mutate(); }}>
-                      <Unlink className="w-4 h-4 mr-2" />
-                      Superset opheffen
-                    </DropdownMenuItem>
-                  )}
-                  {isSuperset && onSwapSupersetOrder && (
-                    <DropdownMenuItem onClick={onSwapSupersetOrder}>
-                      <ArrowUpDown className="w-4 h-4 mr-2" />
-                      Volgorde wisselen in superset
-                    </DropdownMenuItem>
-                  )}
-                  {canMoveUp && onMoveUp && (
-                    <DropdownMenuItem onClick={onMoveUp}>
-                      <ArrowUp className="w-4 h-4 mr-2" />
-                      Omhoog verplaatsen
-                    </DropdownMenuItem>
-                  )}
-                  {canMoveDown && onMoveDown && (
-                    <DropdownMenuItem onClick={onMoveDown}>
-                      <ArrowDown className="w-4 h-4 mr-2" />
-                      Omlaag verplaatsen
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Verwijderen
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </div>
         </div>
 
@@ -236,9 +196,9 @@ export default function ExerciseRow({
           {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-6", placeholder: "—" })}
         </div>
 
-        {/* Line 3: Notes + settings — always shown */}
+        {/* Line 3: Notes — always shown */}
         {!readOnly ? (
-          <div className="flex items-center gap-1 mt-0.5">
+          <div className="flex items-center gap-1 mt-1.5">
             <button
               onClick={() => { setEditingNotes(notes); setShowNotesDialog(true); }}
               className={`shrink-0 ${hasNotes ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
@@ -246,34 +206,6 @@ export default function ExerciseRow({
             >
               <MessageCircleWarning className="w-3.5 h-3.5" />
             </button>
-            <Popover open={showSettings} onOpenChange={setShowSettings}>
-              <PopoverTrigger asChild>
-                <button
-                  className={`shrink-0 ${weightType === "reps_only" ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
-                  data-testid={`button-settings-${exercise.id}`}
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-auto p-3">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id={`weight-toggle-${exercise.id}`}
-                    checked={weightType === "weighted"}
-                    onCheckedChange={(checked) => {
-                      const newType = checked ? "weighted" : "reps_only";
-                      setWeightType(newType);
-                      onBeforeChange();
-                      updateExercise.mutate({ weightType: newType });
-                    }}
-                    data-testid={`toggle-weight-type-${exercise.id}`}
-                  />
-                  <Label htmlFor={`weight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
-                    Gewicht
-                  </Label>
-                </div>
-              </PopoverContent>
-            </Popover>
             {hasNotes && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -286,7 +218,7 @@ export default function ExerciseRow({
             )}
           </div>
         ) : hasNotes ? (
-          <div className="flex items-center gap-1 mt-0.5">
+          <div className="flex items-center gap-1 mt-1.5">
             <MessageCircleWarning className="w-3.5 h-3.5 text-primary shrink-0" />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -331,6 +263,77 @@ export default function ExerciseRow({
           </div>
         </td>
       ))}
+
+      {/* Menu column — far right */}
+      {!readOnly && (
+        <td className="py-1 px-1 w-8 align-top">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-muted-foreground/40 hover:text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-1" data-testid={`button-menu-${exercise.id}`}>
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowSettings(!showSettings)}>
+                <Settings className="w-4 h-4 mr-2" />
+                Instellingen
+              </DropdownMenuItem>
+              {isSuperset && (
+                <DropdownMenuItem onClick={() => { onBeforeChange(); unSuperset.mutate(); }}>
+                  <Unlink className="w-4 h-4 mr-2" />
+                  Superset opheffen
+                </DropdownMenuItem>
+              )}
+              {isSuperset && onSwapSupersetOrder && (
+                <DropdownMenuItem onClick={onSwapSupersetOrder}>
+                  <ArrowUpDown className="w-4 h-4 mr-2" />
+                  Volgorde wisselen in superset
+                </DropdownMenuItem>
+              )}
+              {canMoveUp && onMoveUp && (
+                <DropdownMenuItem onClick={onMoveUp}>
+                  <ArrowUp className="w-4 h-4 mr-2" />
+                  Omhoog verplaatsen
+                </DropdownMenuItem>
+              )}
+              {canMoveDown && onMoveDown && (
+                <DropdownMenuItem onClick={onMoveDown}>
+                  <ArrowDown className="w-4 h-4 mr-2" />
+                  Omlaag verplaatsen
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Verwijderen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Settings popover (triggered from menu) */}
+          <Popover open={showSettings} onOpenChange={setShowSettings}>
+            <PopoverTrigger asChild><span /></PopoverTrigger>
+            <PopoverContent side="left" align="start" className="w-auto p-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`weight-toggle-${exercise.id}`}
+                  checked={weightType === "weighted"}
+                  onCheckedChange={(checked) => {
+                    const newType = checked ? "weighted" : "reps_only";
+                    setWeightType(newType);
+                    onBeforeChange();
+                    updateExercise.mutate({ weightType: newType });
+                  }}
+                  data-testid={`toggle-weight-type-${exercise.id}`}
+                />
+                <Label htmlFor={`weight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
+                  Gewicht
+                </Label>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </td>
+      )}
 
       {/* Hidden td for dialogs and chart */}
       <td className="py-1 px-1 w-0">
