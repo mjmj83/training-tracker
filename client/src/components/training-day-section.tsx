@@ -160,12 +160,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
           <table className="w-full text-xs border-collapse" data-testid={`table-exercises-${day.id}`}>
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-1.5 px-2 font-medium text-muted-foreground w-[200px] min-w-[200px]">Oefening</th>
-                <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">Sets</th>
-                <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">Reps</th>
-                <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[60px]">Tempo</th>
-                <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">Rest</th>
-                <th className="text-center py-1.5 px-1 font-medium text-muted-foreground w-[45px]">RIR</th>
+                <th className="text-left py-1.5 px-2 font-medium text-muted-foreground min-w-[260px]">Oefening</th>
                 {weeks.map((w) => (
                   <th
                     key={w}

@@ -100,6 +100,47 @@ export default function ExerciseRow({
 
   const dragOverClass = isDragOver ? "ring-2 ring-primary ring-inset" : "";
 
+  // Settings badge component
+  const SettingsBadge = ({ label, value, onChange, onFieldBlur, field, type, inputWidth = "w-6", min, max, step, placeholder }: {
+    label: string;
+    value: string | number;
+    onChange: (v: any) => void;
+    onFieldBlur: () => void;
+    field: string;
+    type?: string;
+    inputWidth?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    placeholder?: string;
+  }) => (
+    <div className="flex items-center gap-0.5">
+      <span className="text-[10px] text-muted-foreground">{label}</span>
+      {readOnly ? (
+        <span className="text-[11px] font-medium">{value || "—"}</span>
+      ) : (
+        <input
+          type={type}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => {
+            if (type === "number") {
+              onChange(parseInt(e.target.value) || (min ?? 1));
+            } else {
+              onChange(e.target.value);
+            }
+          }}
+          onBlur={onFieldBlur}
+          placeholder={placeholder}
+          className={`${inputWidth} text-[11px] text-center bg-muted/50 border border-border rounded px-1 py-0 h-5 outline-none focus:ring-1 focus:ring-primary`}
+          data-testid={`input-${field}-${exercise.id}`}
+        />
+      )}
+    </div>
+  );
+
   return (
     <tr
       className={`border-b border-border/50 hover:bg-muted/30 transition-colors group ${supersetClass} ${dragOverClass}`}
@@ -114,8 +155,9 @@ export default function ExerciseRow({
       onDrop={(e) => { e.preventDefault(); onDrop(); }}
       data-testid={`exercise-row-${exercise.id}`}
     >
-      {/* Drag handle + Exercise Name + Notes */}
+      {/* Exercise info block — single td with stacked lines */}
       <td className="py-1 px-2">
+        {/* Line 1: Exercise name + actions */}
         <div className="flex items-center gap-1">
           {!readOnly && (
             <GripVertical className="w-3 h-3 text-muted-foreground/40 cursor-grab shrink-0" />
@@ -132,21 +174,8 @@ export default function ExerciseRow({
               readOnly={readOnly}
               data-testid={`input-exercise-name-${exercise.id}`}
             />
-            {/* Personal notes under the name — truncated with tooltip on hover */}
-            {hasNotes && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <p className="text-[10px] text-muted-foreground truncate max-w-[180px] cursor-default leading-tight">
-                    {notes}
-                  </p>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-wrap">
-                  {notes}
-                </TooltipContent>
-              </Tooltip>
-            )}
           </div>
-          {/* Notes alert icon — tooltip shows notes, click opens edit (only for trainers) */}
+          {/* Notes alert icon */}
           {!readOnly && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -170,69 +199,87 @@ export default function ExerciseRow({
               </TooltipContent>
             </Tooltip>
           )}
+          {/* Action buttons on hover */}
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-5 w-5 text-muted-foreground hover:text-primary"
+                  onClick={() => setShowChart(true)}
+                  data-testid={`button-chart-${exercise.id}`}
+                >
+                  <BarChart3 className="w-3 h-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">Bekijk chart</TooltipContent>
+            </Tooltip>
+            {!readOnly && isSuperset && (
+              <Button
+                size="icon" variant="ghost"
+                className="h-5 w-5 text-muted-foreground hover:text-primary"
+                onClick={() => { onBeforeChange(); unSuperset.mutate(); }}
+                title="Superset opheffen"
+                data-testid={`button-unsuperset-${exercise.id}`}
+              >
+                <Unlink className="w-3 h-3" />
+              </Button>
+            )}
+            {!readOnly && (
+              <Button
+                size="icon" variant="ghost"
+                className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                onClick={() => setShowDeleteConfirm(true)}
+                data-testid={`button-delete-exercise-${exercise.id}`}
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
         </div>
-      </td>
 
-      {/* Sets */}
-      <td className="py-1 px-1 text-center">
-        <input
-          type="number" min={1} max={5} value={sets}
-          onChange={(e) => { if (!readOnly) setSets(parseInt(e.target.value) || 1); }}
-          onBlur={() => handleBlur("sets", sets)}
-          className="w-full bg-transparent border-none outline-none text-center text-xs tabular-nums"
-          readOnly={readOnly}
-          data-testid={`input-sets-${exercise.id}`}
-        />
-      </td>
+        {/* Line 2: Settings badges */}
+        <div className="flex gap-2 items-center mt-0.5">
+          <SettingsBadge
+            label="sets" value={sets}
+            onChange={setSets} onFieldBlur={() => handleBlur("sets", sets)}
+            field="sets" type="number" inputWidth="w-6" min={1} max={5}
+          />
+          <SettingsBadge
+            label="reps" value={goalReps}
+            onChange={setGoalReps} onFieldBlur={() => handleBlur("goalReps", goalReps)}
+            field="reps" type="number" inputWidth="w-6" min={1} max={15}
+          />
+          <SettingsBadge
+            label="tempo" value={tempo}
+            onChange={setTempo} onFieldBlur={() => handleBlur("tempo", tempo)}
+            field="tempo" inputWidth="w-8" placeholder="—"
+          />
+          <SettingsBadge
+            label="rest" value={rest}
+            onChange={setRest} onFieldBlur={() => handleBlur("rest", rest)}
+            field="rest" type="number" inputWidth="w-8" min={5} max={90} step={5}
+          />
+          <SettingsBadge
+            label="rir" value={rir}
+            onChange={setRir} onFieldBlur={() => handleBlur("rir", rir)}
+            field="rir" inputWidth="w-6" placeholder="—"
+          />
+        </div>
 
-      {/* Goal Reps */}
-      <td className="py-1 px-1 text-center">
-        <input
-          type="number" min={1} max={15} value={goalReps}
-          onChange={(e) => { if (!readOnly) setGoalReps(parseInt(e.target.value) || 1); }}
-          onBlur={() => handleBlur("goalReps", goalReps)}
-          className="w-full bg-transparent border-none outline-none text-center text-xs tabular-nums"
-          readOnly={readOnly}
-          data-testid={`input-reps-${exercise.id}`}
-        />
-      </td>
-
-      {/* Tempo */}
-      <td className="py-1 px-1 text-center">
-        <input
-          value={tempo}
-          onChange={(e) => { if (!readOnly) setTempo(e.target.value); }}
-          onBlur={() => handleBlur("tempo", tempo)}
-          className="w-full bg-transparent border-none outline-none text-center text-xs"
-          placeholder="—"
-          readOnly={readOnly}
-          data-testid={`input-tempo-${exercise.id}`}
-        />
-      </td>
-
-      {/* Rest */}
-      <td className="py-1 px-1 text-center">
-        <input
-          type="number" min={5} max={90} step={5} value={rest}
-          onChange={(e) => { if (!readOnly) setRest(parseInt(e.target.value) || 60); }}
-          onBlur={() => handleBlur("rest", rest)}
-          className="w-full bg-transparent border-none outline-none text-center text-xs tabular-nums"
-          readOnly={readOnly}
-          data-testid={`input-rest-${exercise.id}`}
-        />
-      </td>
-
-      {/* RIR */}
-      <td className="py-1 px-1 text-center">
-        <input
-          value={rir}
-          onChange={(e) => { if (!readOnly) setRir(e.target.value); }}
-          onBlur={() => handleBlur("rir", rir)}
-          className="w-full bg-transparent border-none outline-none text-center text-xs"
-          placeholder="—"
-          readOnly={readOnly}
-          data-testid={`input-rir-${exercise.id}`}
-        />
+        {/* Line 3: Notes (only if notes exist) */}
+        {hasNotes && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-[10px] text-muted-foreground italic truncate max-w-[240px] cursor-default leading-tight mt-0.5">
+                {notes}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-wrap">
+              {notes}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </td>
 
       {/* Weight columns */}
@@ -265,44 +312,8 @@ export default function ExerciseRow({
         </td>
       ))}
 
-      {/* Actions */}
-      <td className="py-1 px-1">
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon" variant="ghost"
-                className="h-5 w-5 text-muted-foreground hover:text-primary"
-                onClick={() => setShowChart(true)}
-                data-testid={`button-chart-${exercise.id}`}
-              >
-                <BarChart3 className="w-3 h-3" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">Bekijk chart</TooltipContent>
-          </Tooltip>
-          {!readOnly && isSuperset && (
-            <Button
-              size="icon" variant="ghost"
-              className="h-5 w-5 text-muted-foreground hover:text-primary"
-              onClick={() => { onBeforeChange(); unSuperset.mutate(); }}
-              title="Superset opheffen"
-              data-testid={`button-unsuperset-${exercise.id}`}
-            >
-              <Unlink className="w-3 h-3" />
-            </Button>
-          )}
-          {!readOnly && (
-            <Button
-              size="icon" variant="ghost"
-              className="h-5 w-5 text-muted-foreground hover:text-destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-              data-testid={`button-delete-exercise-${exercise.id}`}
-            >
-              <Trash2 className="w-3 h-3" />
-            </Button>
-          )}
-        </div>
+      {/* Hidden td for dialogs and chart */}
+      <td className="py-1 px-1 w-0">
         {!readOnly && (
           <ConfirmDialog
             open={showDeleteConfirm}
@@ -354,12 +365,12 @@ export default function ExerciseRow({
             </DialogContent>
           </Dialog>
         )}
+        <ExerciseChartDialog
+          exerciseName={showChart ? exercise.name : null}
+          open={showChart}
+          onOpenChange={setShowChart}
+        />
       </td>
-      <ExerciseChartDialog
-        exerciseName={showChart ? exercise.name : null}
-        open={showChart}
-        onOpenChange={setShowChart}
-      />
     </tr>
   );
 }
