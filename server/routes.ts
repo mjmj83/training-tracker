@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { registerAuthRoutes, authMiddleware } from "./auth";
+import ExcelJS from "exceljs";
 
 export function registerRoutes(server: Server, app: Express): void {
   // ============= AUTH =============
@@ -269,6 +270,135 @@ export function registerRoutes(server: Server, app: Express): void {
     const allMonths = storage.getMonthsByClient(clientId);
     const blocks = allMonths.map(m => storage.getFullMonthData(m.id));
     res.json(blocks);
+  });
+
+  // ============= EXPORT =============
+  app.get("/api/clients/:clientId/export", async (req, res) => {
+    const clientId = parseInt(req.params.clientId);
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
+
+    const client = storage.getClient(clientId);
+    if (!client) return res.status(404).json({ error: "Client not found" });
+
+    const allMonths = storage.getMonthsByClient(clientId)
+      .sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Training Tracker";
+
+    for (const month of allMonths) {
+      const full = storage.getFullMonthData(month.id);
+      const weekCount = month.weekCount || 4;
+      // Sheet name max 31 chars, no special chars
+      const sheetName = (month.label || `Blok ${month.id}`).replace(/[\\\/*?:\[\]]/g, "").slice(0, 31);
+      const ws = wb.addWorksheet(sheetName);
+
+      // Build columns: Oefening | sets | reps | tempo | rest | rir | notes | W1S1 | W1S2 ... | WnSm
+      const maxSets = Math.max(1, ...(full.trainingDays?.flatMap((d: any) => d.exercises?.map((e: any) => e.sets || 3) || []) || [3]));
+      const cols: Partial<ExcelJS.Column>[] = [
+        { header: "Dag", key: "day", width: 14 },
+        { header: "Oefening", key: "exercise", width: 26 },
+        { header: "sets", key: "sets", width: 5 },
+        { header: "reps", key: "reps", width: 7 },
+        { header: "tempo", key: "tempo", width: 7 },
+        { header: "rest", key: "rest", width: 5 },
+        { header: "rir", key: "rir", width: 5 },
+        { header: "notities", key: "notes", width: 20 },
+      ];
+
+      // Week date headers
+      const weekDates: Record<string, string> = {}; // "dayId-weekNum" -> date
+      for (const wd of full.weekDates || []) {
+        weekDates[`${wd.trainingDayId}-${wd.weekNumber}`] = wd.date || "";
+      }
+
+      for (let w = 1; w <= weekCount; w++) {
+        for (let s = 1; s <= maxSets; s++) {
+          cols.push({
+            header: `W${w} S${s}`,
+            key: `w${w}s${s}`,
+            width: 11,
+          });
+        }
+      }
+      ws.columns = cols;
+
+      // Style header row
+      const headerRow = ws.getRow(1);
+      headerRow.font = { bold: true, size: 10 };
+      headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0EDE8" } };
+      headerRow.alignment = { vertical: "middle" };
+
+      // Add week date info as a second header row
+      if (full.trainingDays?.length > 0) {
+        const firstDayId = full.trainingDays[0]?.id;
+        const dateRowData: Record<string, string> = {};
+        for (let w = 1; w <= weekCount; w++) {
+          const dateStr = weekDates[`${firstDayId}-${w}`];
+          if (dateStr) {
+            dateRowData[`w${w}s1`] = dateStr;
+          }
+        }
+        if (Object.keys(dateRowData).length > 0) {
+          const dateRow = ws.addRow(dateRowData);
+          dateRow.font = { italic: true, size: 9, color: { argb: "FF888888" } };
+        }
+      }
+
+      // Add exercise rows per training day
+      for (const day of (full.trainingDays || []).sort((a: any, b: any) => a.sortOrder - b.sortOrder)) {
+        // Empty spacer row between days
+        if (ws.rowCount > 2) ws.addRow({});
+
+        for (const ex of (day.exercises || []).sort((a: any, b: any) => a.sortOrder - b.sortOrder)) {
+          const rowData: Record<string, any> = {
+            day: day.name,
+            exercise: ex.name,
+            sets: ex.sets,
+            reps: ex.goalReps,
+            tempo: ex.tempo || "",
+            rest: ex.rest,
+            rir: ex.rir || "",
+            notes: ex.notes || "",
+          };
+
+          // Fill weight logs: "kg x reps" format
+          for (const log of ex.weightLogs || []) {
+            const key = `w${log.weekNumber}s${log.setNumber}`;
+            if (ex.weightType === "reps_only") {
+              rowData[key] = log.reps != null ? `${log.reps}` : "";
+            } else {
+              const parts = [];
+              if (log.weight != null) parts.push(log.weight);
+              if (log.reps != null) parts.push(log.reps);
+              rowData[key] = parts.length === 2 ? `${parts[0]} x ${parts[1]}` : (parts[0]?.toString() || "");
+            }
+          }
+
+          const row = ws.addRow(rowData);
+          row.font = { size: 10 };
+        }
+      }
+
+      // Borders and alignment for data cells
+      ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return;
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: "middle" };
+        });
+      });
+    }
+
+    // If no blocks, add an empty sheet
+    if (allMonths.length === 0) {
+      wb.addWorksheet("Geen data");
+    }
+
+    const safeName = client.name.replace(/[^a-zA-Z0-9_\- ]/g, "").trim();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName} - Training Export.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
   });
 
   // ============= SNAPSHOTS / SAVE STATE =============

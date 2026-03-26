@@ -1,7 +1,7 @@
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dumbbell, Undo2, Redo2, Save, Plus, X } from "lucide-react";
+import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import TrainingDaySection from "@/components/training-day-section";
@@ -238,6 +238,32 @@ export default function TrainingPage() {
             >
               <Save className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Opslaan</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={async () => {
+                try {
+                  const res = await apiRequest("GET", `/api/clients/${clientId}/export`);
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  const disposition = res.headers.get("content-disposition");
+                  const match = disposition?.match(/filename="(.+)"/);
+                  a.download = match?.[1] || "Training Export.xlsx";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch (e) {
+                  toast({ title: "Fout", description: "Export mislukt", variant: "destructive" });
+                }
+              }}
+              className="h-7 px-2 text-xs gap-1"
+              data-testid="button-export"
+              title="Exporteer alle trainingsblokken naar Excel"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
         )}
