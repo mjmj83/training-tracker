@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, copyFile } from "fs/promises";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -57,6 +57,14 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  // Copy exercise-db.json to dist
+  try {
+    await copyFile("server/exercise-db.json", "dist/exercise-db.json");
+    console.log("copied exercise-db.json to dist/");
+  } catch (e) {
+    console.warn("exercise-db.json not found, skipping");
+  }
 }
 
 buildAll().catch((err) => {

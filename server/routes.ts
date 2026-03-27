@@ -3,6 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { registerAuthRoutes, authMiddleware } from "./auth";
 import ExcelJS from "exceljs";
+import { findExerciseImage } from "./exercise-lookup";
 
 export function registerRoutes(server: Server, app: Express): void {
   // ============= AUTH =============
@@ -121,13 +122,19 @@ export function registerRoutes(server: Server, app: Express): void {
   app.post("/api/exercises", (req, res) => {
     const user = (req as any).user;
     const { trainingDayId, name, sets, goalReps, tempo, rest, rir, weightType, notes, supersetGroupId, sortOrder } = req.body;
+    const imageUrl = findExerciseImage(name);
     res.json(storage.createExercise({
       trainingDayId, name, sets: sets ?? 3, goalReps: goalReps ?? 10,
-      tempo: tempo ?? "", rest: rest ?? 60, rir: rir ?? "", weightType: weightType ?? "weighted", notes: notes ?? "", supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
+      tempo: tempo ?? "", rest: rest ?? 60, rir: rir ?? "", weightType: weightType ?? "weighted", notes: notes ?? "",
+      imageUrl, supersetGroupId: supersetGroupId ?? null, sortOrder: sortOrder ?? 0,
     }, user.id));
   });
   app.patch("/api/exercises/:id", (req, res) => {
     const user = (req as any).user;
+    // If name is being changed, look up new image
+    if (req.body.name) {
+      req.body.imageUrl = findExerciseImage(req.body.name);
+    }
     res.json(storage.updateExercise(parseInt(req.params.id), req.body, user.id));
   });
   app.delete("/api/exercises/:id", (req, res) => {

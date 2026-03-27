@@ -192,6 +192,8 @@ sqlite.exec(`
 try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
 // Migration: add name column to credentials
 try { sqlite.exec("ALTER TABLE credentials ADD COLUMN name TEXT"); } catch {}
+// Migration: add image_url column to exercises
+try { sqlite.exec("ALTER TABLE exercises ADD COLUMN image_url TEXT"); } catch {}
 
 // Seed default trainer user
 {

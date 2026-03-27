@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -60,6 +60,7 @@ export default function ExerciseRow({
   const [showNotesDialog, setShowNotesDialog] = useState(false);
   const [editingNotes, setEditingNotes] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [showImage, setShowImage] = useState(false);
 
   const updateExercise = useMutation({
     mutationFn: (data: Partial<Exercise>) =>
@@ -316,6 +317,16 @@ export default function ExerciseRow({
           >
             <BarChart3 className="w-3.5 h-3.5" />
           </button>
+          {/* Image icon — under chart icon, only if image exists */}
+          {exercise.imageUrl && (
+            <button
+              onClick={() => setShowImage(true)}
+              className="text-muted-foreground/40 hover:text-primary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex items-center justify-center w-full"
+              data-testid={`button-image-${exercise.id}`}
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
         </td>
       )}
 
@@ -403,6 +414,24 @@ export default function ExerciseRow({
           open={showChart}
           onOpenChange={setShowChart}
         />
+        {/* Exercise image dialog */}
+        {exercise.imageUrl && (
+          <Dialog open={showImage} onOpenChange={setShowImage}>
+            <DialogContent className="sm:max-w-[400px] p-4">
+              <DialogHeader>
+                <DialogTitle className="text-sm">{exercise.name}</DialogTitle>
+              </DialogHeader>
+              <div className="flex justify-center">
+                <img
+                  src={exercise.imageUrl}
+                  alt={exercise.name}
+                  className="rounded-md max-h-[400px] object-contain"
+                  loading="lazy"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </td>
     </tr>
   );
