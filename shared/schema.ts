@@ -16,6 +16,19 @@ export const insertClientSchema = createInsertSchema(clients).omit({ id: true })
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
+// Client note tabs
+export const noteTabs = sqliteTable("note_tabs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  name: text("name").notNull(),
+  content: text("content").default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertNoteTabSchema = createInsertSchema(noteTabs).omit({ id: true });
+export type InsertNoteTab = z.infer<typeof insertNoteTabSchema>;
+export type NoteTab = typeof noteTabs.$inferSelect;
+
 // Training blocks (formerly "months")
 export const months = sqliteTable("months", {
   id: integer("id").primaryKey({ autoIncrement: true }),

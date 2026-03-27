@@ -38,6 +38,7 @@ export default function MonthSwitcher({ readOnly = false }: Props) {
   const [dialogLabel, setDialogLabel] = useState("");
   const [dialogStartDate, setDialogStartDate] = useState("");
   const [dialogWeekCount, setDialogWeekCount] = useState(4);
+  const [dialogCopyFromId, setDialogCopyFromId] = useState<number | null>(null);
 
   const { data: months = [] } = useQuery<Month[]>({
     queryKey: ["/api/clients", clientId, "months"],
@@ -112,6 +113,7 @@ export default function MonthSwitcher({ readOnly = false }: Props) {
     setDialogLabel("");
     setDialogStartDate(today);
     setDialogWeekCount(4);
+    setDialogCopyFromId(null);
     setPopoverOpen(false);
     setDialogOpen(true);
   };
@@ -144,14 +146,26 @@ export default function MonthSwitcher({ readOnly = false }: Props) {
     const month = d.getMonth() + 1;
 
     if (dialogMode === "create" && clientId) {
-      createMonth.mutate({
-        clientId,
-        label: dialogLabel.trim(),
-        year,
-        month,
-        weekCount: dialogWeekCount,
-        startDate: dialogStartDate,
-      });
+      if (dialogCopyFromId) {
+        // Create by copying an existing block
+        copyMonth.mutate({
+          monthId: dialogCopyFromId,
+          label: dialogLabel.trim(),
+          year,
+          month,
+          weekCount: dialogWeekCount,
+          startDate: dialogStartDate,
+        });
+      } else {
+        createMonth.mutate({
+          clientId,
+          label: dialogLabel.trim(),
+          year,
+          month,
+          weekCount: dialogWeekCount,
+          startDate: dialogStartDate,
+        });
+      }
     } else if (dialogMode === "edit" && dialogBlockId) {
       updateMonth.mutate({
         id: dialogBlockId,
@@ -292,6 +306,22 @@ export default function MonthSwitcher({ readOnly = false }: Props) {
                   data-testid="input-dialog-block-date"
                 />
               </div>
+              {dialogMode === "create" && sortedMonths.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Kopieer oefeningen van</Label>
+                  <select
+                    value={dialogCopyFromId ?? ""}
+                    onChange={(e) => setDialogCopyFromId(e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full text-sm border border-border rounded-md px-2 py-1.5 bg-background"
+                    data-testid="select-copy-from"
+                  >
+                    <option value="">Leeg blok (geen kopie)</option>
+                    {sortedMonths.map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-xs">Aantal weken</Label>
                 <div className="flex gap-1 flex-wrap">

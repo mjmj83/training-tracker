@@ -252,6 +252,41 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json({ ok: true });
   });
 
+  // ============= NOTE TABS =============
+  app.get("/api/clients/:clientId/note-tabs", (req, res) => {
+    const clientId = parseInt(req.params.clientId);
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
+    const tabs = storage.getNoteTabsByClient(clientId);
+    // Auto-create a default tab if none exist
+    if (tabs.length === 0) {
+      const tab = storage.createNoteTab({ clientId, name: "Algemeen", content: "", sortOrder: 0 });
+      // Migrate old client.notes to first tab
+      const client = storage.getClient(clientId);
+      if (client?.notes) {
+        storage.updateNoteTab(tab.id, { content: client.notes });
+        return res.json([{ ...tab, content: client.notes }]);
+      }
+      return res.json([tab]);
+    }
+    res.json(tabs);
+  });
+  app.post("/api/clients/:clientId/note-tabs", (req, res) => {
+    const clientId = parseInt(req.params.clientId);
+    if (!verifyClientAccess(req, clientId)) return res.status(403).json({ error: "Access denied" });
+    const { name } = req.body;
+    const tabs = storage.getNoteTabsByClient(clientId);
+    const tab = storage.createNoteTab({ clientId, name: name || "Nieuw tabje", content: "", sortOrder: tabs.length });
+    res.json(tab);
+  });
+  app.patch("/api/note-tabs/:id", (req, res) => {
+    const updated = storage.updateNoteTab(parseInt(req.params.id), req.body);
+    res.json(updated);
+  });
+  app.delete("/api/note-tabs/:id", (req, res) => {
+    storage.deleteNoteTab(parseInt(req.params.id));
+    res.json({ ok: true });
+  });
+
   // ============= FULL MONTH DATA =============
   // TODO: Could tighten by verifying the month's parent client belongs to user
   app.get("/api/months/:monthId/full", (req, res) => {

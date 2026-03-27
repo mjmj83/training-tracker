@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import {
   clients, type Client, type InsertClient,
+  noteTabs, type NoteTab, type InsertNoteTab,
   abcMeasurements, type AbcMeasurement, type InsertAbcMeasurement,
   months, type Month, type InsertMonth,
   trainingDays, type TrainingDay, type InsertTrainingDay,
@@ -166,6 +167,17 @@ sqlite.exec(`
   );
 `);
 
+// Note tabs table
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS note_tabs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL REFERENCES clients(id),
+    name TEXT NOT NULL,
+    content TEXT DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );
+`);
+
 // Email whitelist table
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS email_whitelist (
@@ -256,6 +268,8 @@ export class SqliteStorage {
     for (const month of monthList) { this.deleteMonth(month.id); }
     // Delete ABC measurements
     db.delete(abcMeasurements).where(eq(abcMeasurements.clientId, id)).run();
+    // Delete note tabs
+    db.delete(noteTabs).where(eq(noteTabs.clientId, id)).run();
     // Unlink any users tied to this client (don't delete the user, just unlink)
     const linkedUsers = db.select().from(users).all().filter(u => u.clientId === id);
     for (const u of linkedUsers) {
@@ -305,7 +319,8 @@ export class SqliteStorage {
       for (const ex of exs) {
         db.insert(exercises).values({
           trainingDayId: newDay.id, name: ex.name, sets: ex.sets, goalReps: ex.goalReps,
-          tempo: ex.tempo, rest: ex.rest, notes: ex.notes, supersetGroupId: ex.supersetGroupId, sortOrder: ex.sortOrder,
+          tempo: ex.tempo, rest: ex.rest, rir: ex.rir, weightType: ex.weightType,
+          notes: ex.notes, supersetGroupId: ex.supersetGroupId, sortOrder: ex.sortOrder,
         }).run();
       }
     }
@@ -598,6 +613,20 @@ export class SqliteStorage {
       }
     }
   }
+  // ============= NOTE TABS =============
+  getNoteTabsByClient(clientId: number): NoteTab[] {
+    return db.select().from(noteTabs).where(eq(noteTabs.clientId, clientId)).all();
+  }
+  createNoteTab(data: InsertNoteTab): NoteTab {
+    return db.insert(noteTabs).values(data).returning().get();
+  }
+  updateNoteTab(id: number, data: Partial<InsertNoteTab>): NoteTab | undefined {
+    return db.update(noteTabs).set(data).where(eq(noteTabs.id, id)).returning().get();
+  }
+  deleteNoteTab(id: number): void {
+    db.delete(noteTabs).where(eq(noteTabs.id, id)).run();
+  }
+
   // ============= EMAIL WHITELIST =============
   getWhitelistedEmails(): EmailWhitelist[] {
     return db.select().from(emailWhitelist).all();
