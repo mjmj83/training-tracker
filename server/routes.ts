@@ -155,6 +155,9 @@ export function registerRoutes(server: Server, app: Express): void {
     if (!exerciseIds || !Array.isArray(exerciseIds) || exerciseIds.length < 2) {
       return res.status(400).json({ error: "Need at least 2 exercise IDs" });
     }
+    if (exerciseIds.length > 5) {
+      return res.status(400).json({ error: "Maximum 5 exercises per group" });
+    }
     // Use the smallest id as the group id
     const groupId = Math.min(...exerciseIds);
     for (const id of exerciseIds) {

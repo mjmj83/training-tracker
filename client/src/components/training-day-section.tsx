@@ -125,7 +125,29 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
     const sourceId = dragSourceId.current;
     if (sourceId && sourceId !== targetExerciseId) {
       onBeforeChange();
-      createSuperset.mutate([sourceId, targetExerciseId]);
+      // If target is already in a superset, add source to that group
+      const targetEx = sortedExercises.find(e => e.id === targetExerciseId);
+      if (targetEx?.supersetGroupId) {
+        const groupMembers = sortedExercises
+          .filter(e => e.supersetGroupId === targetEx.supersetGroupId)
+          .map(e => e.id);
+        if (!groupMembers.includes(sourceId)) {
+          createSuperset.mutate([...groupMembers, sourceId]);
+        }
+      } else {
+        // If source is already in a superset, add target to that group
+        const sourceEx = sortedExercises.find(e => e.id === sourceId);
+        if (sourceEx?.supersetGroupId) {
+          const groupMembers = sortedExercises
+            .filter(e => e.supersetGroupId === sourceEx.supersetGroupId)
+            .map(e => e.id);
+          if (!groupMembers.includes(targetExerciseId)) {
+            createSuperset.mutate([...groupMembers, targetExerciseId]);
+          }
+        } else {
+          createSuperset.mutate([sourceId, targetExerciseId]);
+        }
+      }
     }
     dragSourceId.current = null;
     setDragOverId(null);
@@ -218,27 +240,35 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
             </thead>
             <tbody>
               {groups.map((group, gi) => {
-                const isSuperset = group.groupId !== null && group.exercises.length > 1;
+                const isGrouped = group.groupId !== null && group.exercises.length > 1;
+                const groupSize = group.exercises.length;
+                const groupLabel = groupSize === 2 ? "superset" : groupSize === 3 ? "triset" : groupSize >= 4 ? "giant set" : "";
                 return group.exercises.map((ex, ei) => {
                   // Determine global index in sortedExercises for move up/down
                   const globalIdx = sortedExercises.findIndex(e => e.id === ex.id);
-                  // Spacer: 4px within superset, 12px between groups/exercises
+                  // Spacer: 4px within superset, 16px between groups/exercises
                   const isFirstOverall = gi === 0 && ei === 0;
-                  const spacerHeight = (isSuperset && ei > 0) ? 'h-1' : 'h-4';
+                  const spacerHeight = (isGrouped && ei > 0) ? 'h-1' : 'h-4';
 
                   return (
                     <Fragment key={ex.id}>
                       {!isFirstOverall && (
                         <tr><td colSpan={999} className={`${spacerHeight} p-0 border-0`}></td></tr>
                       )}
+                      {/* Group label above the first exercise */}
+                      {isGrouped && ei === 0 && (
+                        <tr><td colSpan={999} className="p-0 border-0 pb-0.5">
+                          <span className="text-[10px] italic text-muted-foreground/60 pl-2">{groupLabel}</span>
+                        </td></tr>
+                      )}
                       <ExerciseRow
                         exercise={ex}
                         weightLogs={ex.weightLogs}
                         monthId={monthId}
                         weekCount={weekCount}
-                        isSuperset={isSuperset}
-                        isFirstInSuperset={isSuperset && ei === 0}
-                        isLastInSuperset={isSuperset && ei === group.exercises.length - 1}
+                        isSuperset={isGrouped}
+                        isFirstInSuperset={isGrouped && ei === 0}
+                        isLastInSuperset={isGrouped && ei === group.exercises.length - 1}
                         isDragOver={dragOverId === ex.id}
                         onDragStart={() => handleDragStart(ex.id)}
                         onDragOver={(e) => handleDragOver(e, ex.id)}
@@ -252,7 +282,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         onMoveDown={() => moveExercise(ex.id, 'down')}
                         canMoveUp={globalIdx > 0}
                         canMoveDown={globalIdx < sortedExercises.length - 1}
-                        onSwapSupersetOrder={isSuperset ? () => swapSupersetOrder(ex.id) : undefined}
+                        onSwapSupersetOrder={isGrouped ? () => swapSupersetOrder(ex.id) : undefined}
                       />
                     </Fragment>
                   );
