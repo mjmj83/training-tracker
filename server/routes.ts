@@ -3,9 +3,16 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { registerAuthRoutes, authMiddleware } from "./auth";
 import ExcelJS from "exceljs";
-import { findExerciseImage } from "./exercise-lookup";
+import { findExerciseImage, getGifDir } from "./exercise-lookup";
+import express from "express";
 
 export function registerRoutes(server: Server, app: Express): void {
+  // ============= EXERCISE GIF CACHE =============
+  app.use("/api/exercise-gifs", express.static(getGifDir(), {
+    maxAge: "30d",
+    immutable: true,
+  }));
+
   // ============= AUTH =============
   registerAuthRoutes(app, storage);
   app.use(authMiddleware(storage));
