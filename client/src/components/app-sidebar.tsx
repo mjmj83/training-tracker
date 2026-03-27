@@ -224,7 +224,7 @@ export function AppSidebar() {
           <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
             <PopoverTrigger asChild>
               <button
-                className="flex items-center gap-2 w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                className="flex items-center gap-2 w-full rounded-md border border-sidebar-border px-3 py-2 text-sm hover:bg-sidebar-accent transition-colors text-left"
                 data-testid="button-client-switcher"
               >
                 <Users className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -382,7 +382,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <Link href="/account">
             <button
-              className={`text-xs truncate flex-1 transition-colors ${location === "/account" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+              className={`text-xs truncate flex-1 transition-colors ${location === "/account" ? "text-sidebar-foreground font-medium" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
               title="Account instellingen"
               data-testid="button-account"
             >
