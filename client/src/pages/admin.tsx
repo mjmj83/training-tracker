@@ -1,10 +1,12 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { Shield, Users, Dumbbell, Trash2 } from "lucide-react";
+import { Shield, Users, Dumbbell, Trash2, Plus, Mail } from "lucide-react";
 import { useState } from "react";
 import ConfirmDialog from "@/components/confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -14,6 +16,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+
+interface WhitelistEntry {
+  id: number;
+  email: string;
+  role: string;
+  createdAt: string;
+}
 
 interface AdminUser {
   id: number;
@@ -31,10 +40,18 @@ export default function AdminPage() {
   const isAdminUser = user?.email === "mariusjansen@gmail.com";
 
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; email: string } | null>(null);
+  const [newWhitelistEmail, setNewWhitelistEmail] = useState("");
+  const [newWhitelistRole, setNewWhitelistRole] = useState("trainer");
 
   const { data: users = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
     queryFn: () => apiRequest("GET", "/api/admin/users").then(r => r.json()),
+    enabled: isAdminUser,
+  });
+
+  const { data: whitelist = [] } = useQuery<WhitelistEntry[]>({
+    queryKey: ["/api/admin/whitelist"],
+    queryFn: () => apiRequest("GET", "/api/admin/whitelist").then(r => r.json()),
     enabled: isAdminUser,
   });
 
@@ -43,6 +60,21 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setConfirmDelete(null);
+    },
+  });
+
+  const addWhitelist = useMutation({
+    mutationFn: (data: { email: string; role: string }) => apiRequest("POST", "/api/admin/whitelist", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/whitelist"] });
+      setNewWhitelistEmail("");
+    },
+  });
+
+  const removeWhitelist = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/whitelist/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/whitelist"] });
     },
   });
 
@@ -72,6 +104,82 @@ export default function AdminPage() {
         <Shield className="w-5 h-5 text-primary" />
         <h1 className="text-lg font-semibold">Admin Panel</h1>
       </div>
+
+      {/* Email Whitelist */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Mail className="w-4 h-4 text-primary" />
+            E-mail Whitelist ({whitelist.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Alleen gewhiteliste e-mailadressen kunnen een account aanmaken.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="email@voorbeeld.nl"
+              value={newWhitelistEmail}
+              onChange={(e) => setNewWhitelistEmail(e.target.value)}
+              className="text-sm flex-1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newWhitelistEmail.trim()) {
+                  addWhitelist.mutate({ email: newWhitelistEmail.trim(), role: newWhitelistRole });
+                }
+              }}
+              data-testid="input-whitelist-email"
+            />
+            <select
+              value={newWhitelistRole}
+              onChange={(e) => setNewWhitelistRole(e.target.value)}
+              className="text-sm border border-border rounded-md px-2 bg-background"
+              data-testid="select-whitelist-role"
+            >
+              <option value="trainer">Trainer</option>
+              <option value="client">Client</option>
+            </select>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (newWhitelistEmail.trim()) {
+                  addWhitelist.mutate({ email: newWhitelistEmail.trim(), role: newWhitelistRole });
+                }
+              }}
+              disabled={!newWhitelistEmail.trim()}
+              data-testid="button-add-whitelist"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          {whitelist.length > 0 && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">E-mail</TableHead>
+                  <TableHead className="text-xs">Rol</TableHead>
+                  <TableHead className="text-xs w-10"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {whitelist.map(w => (
+                  <TableRow key={w.id}>
+                    <TableCell className="text-sm">{w.email}</TableCell>
+                    <TableCell className="text-sm">
+                      <Badge variant="outline" className="text-xs capitalize">{w.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => removeWhitelist.mutate(w.id)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Trainers */}
       <Card>

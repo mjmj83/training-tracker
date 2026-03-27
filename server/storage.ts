@@ -17,6 +17,7 @@ import {
   users, type User,
   credentials, type Credential,
   sessions, type Session,
+  emailWhitelist, type EmailWhitelist,
 } from "@shared/schema";
 
 const dbPath = process.env.DATABASE_PATH || "training.db";
@@ -162,6 +163,16 @@ sqlite.exec(`
     challenge TEXT,
     created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL
+  );
+`);
+
+// Email whitelist table
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS email_whitelist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    role TEXT NOT NULL DEFAULT 'trainer',
+    created_at TEXT NOT NULL
   );
 `);
 
@@ -577,6 +588,23 @@ export class SqliteStorage {
         }).run();
       }
     }
+  }
+  // ============= EMAIL WHITELIST =============
+  getWhitelistedEmails(): EmailWhitelist[] {
+    return db.select().from(emailWhitelist).all();
+  }
+  getWhitelistedEmail(email: string): EmailWhitelist | undefined {
+    return db.select().from(emailWhitelist).where(eq(emailWhitelist.email, email.toLowerCase())).get();
+  }
+  addWhitelistedEmail(email: string, role: string = "trainer"): EmailWhitelist {
+    return db.insert(emailWhitelist).values({
+      email: email.toLowerCase(),
+      role,
+      createdAt: new Date().toISOString(),
+    }).returning().get();
+  }
+  removeWhitelistedEmail(id: number): void {
+    db.delete(emailWhitelist).where(eq(emailWhitelist.id, id)).run();
   }
 }
 

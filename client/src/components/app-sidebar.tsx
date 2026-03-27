@@ -380,9 +380,15 @@ export function AppSidebar() {
           </Link>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground truncate flex-1">
-            {user?.email}
-          </span>
+          <Link href="/account">
+            <button
+              className={`text-xs truncate flex-1 transition-colors ${location === "/account" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+              title="Account instellingen"
+              data-testid="button-account"
+            >
+              {user?.email}
+            </button>
+          </Link>
           <button
             onClick={logout}
             className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

@@ -21,16 +21,53 @@ function getRpConfig(req: Request) {
 }
 
 export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
-  // POST /api/auth/register/options
+  // POST /api/auth/register — register a new account with email + PIN (whitelist required)
+  app.post("/api/auth/register", (req: Request, res: Response) => {
+    try {
+      const { email, pin } = req.body;
+      if (!email || !pin) return res.status(400).json({ error: "E-mail en PIN zijn vereist" });
+      if (pin.length < 4) return res.status(400).json({ error: "PIN moet minimaal 4 tekens zijn" });
+
+      // Check whitelist
+      const whitelisted = storage.getWhitelistedEmail(email);
+      if (!whitelisted) {
+        return res.status(403).json({ error: "Dit e-mailadres is niet goedgekeurd. Neem contact op met de admin." });
+      }
+
+      // Check if user already exists
+      const existing = storage.getUserByEmail(email);
+      if (existing) {
+        return res.status(400).json({ error: "Dit e-mailadres is al geregistreerd. Gebruik inloggen." });
+      }
+
+      const pinHash = bcryptjs.hashSync(pin, 10);
+      const user = storage.createUser({
+        email: email.toLowerCase(),
+        displayName: email.split("@")[0],
+        role: whitelisted.role,
+        pinHash,
+      });
+
+      const sessionId = crypto.randomBytes(32).toString("hex");
+      storage.createSession(sessionId, user.id);
+
+      res.json({ verified: true, sessionId, user });
+    } catch (e: any) {
+      console.error("register error:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/auth/register/options — passkey registration (requires auth)
   app.post("/api/auth/register/options", async (req: Request, res: Response) => {
     try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Email is required" });
+      // Must be authenticated to register a passkey
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (!token) return res.status(401).json({ error: "Je moet ingelogd zijn om een passkey te registreren" });
+      const session = storage.getSession(token);
+      if (!session) return res.status(401).json({ error: "Ongeldige sessie" });
 
-      let user = storage.getUserByEmail(email);
-      if (!user) {
-        user = storage.createUser({ email, displayName: email.split("@")[0], role: "trainer" });
-      }
+      const user = session.user;
 
       const existingCredentials = storage.getCredentialsByUserId(user.id);
       const { rpName, rpID } = getRpConfig(req);
@@ -404,6 +441,33 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
       return res.status(400).json({ error: "Je kunt jezelf niet verwijderen" });
     }
     storage.deleteUser(userId);
+    res.json({ ok: true });
+  });
+
+  // ============= ADMIN WHITELIST =============
+  app.get("/api/admin/whitelist", (req: Request, res: Response) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: "Geen toegang" });
+    res.json(storage.getWhitelistedEmails());
+  });
+
+  app.post("/api/admin/whitelist", (req: Request, res: Response) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: "Geen toegang" });
+    const { email, role } = req.body;
+    if (!email) return res.status(400).json({ error: "E-mail is vereist" });
+    try {
+      const entry = storage.addWhitelistedEmail(email, role || "trainer");
+      res.json(entry);
+    } catch (e: any) {
+      if (e.message?.includes("UNIQUE")) {
+        return res.status(400).json({ error: "Dit e-mailadres staat al op de whitelist" });
+      }
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/admin/whitelist/:id", (req: Request, res: Response) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: "Geen toegang" });
+    storage.removeWhitelistedEmail(parseInt(req.params.id));
     res.json({ ok: true });
   });
 

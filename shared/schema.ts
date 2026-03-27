@@ -172,3 +172,15 @@ export const sessions = sqliteTable("sessions", {
 });
 
 export type Session = typeof sessions.$inferSelect;
+
+// Email whitelist — only whitelisted emails can register
+export const emailWhitelist = sqliteTable("email_whitelist", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  role: text("role").notNull().default("trainer"), // 'trainer' | 'client'
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertEmailWhitelistSchema = createInsertSchema(emailWhitelist).omit({ id: true });
+export type InsertEmailWhitelist = z.infer<typeof insertEmailWhitelistSchema>;
+export type EmailWhitelist = typeof emailWhitelist.$inferSelect;
