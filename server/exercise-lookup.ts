@@ -1,95 +1,38 @@
-import fs from "fs";
-import path from "path";
+// ExerciseDB v2 via RapidAPI — search exercises by name and get gifUrl
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || "";
+const BASE_URL = "https://exercisedb.p.rapidapi.com/exercises/name";
 
-const IMAGE_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
-
-interface ExerciseEntry {
-  name: string;
-  id: string;
-  images: string[];
-  primaryMuscles?: string[];
-  equipment?: string;
+if (RAPIDAPI_KEY) {
+  console.log("[exercise-lookup] RapidAPI key configured — ExerciseDB image lookup enabled");
+} else {
+  console.warn("[exercise-lookup] No RAPIDAPI_KEY set — exercise image lookup disabled");
 }
 
-let exerciseDb: ExerciseEntry[] = [];
+export async function findExerciseImage(name: string): Promise<string | null> {
+  if (!RAPIDAPI_KEY || !name || name.trim().length < 2) return null;
 
-// Load exercise database
-const dbPath = path.join(__dirname, "exercise-db.json");
-// In production (bundled), the JSON might be alongside the bundle or need a different path
-const altPath = path.join(process.cwd(), "server", "exercise-db.json");
-const altPath2 = path.join(process.cwd(), "exercise-db.json");
-const altPath3 = path.join(process.cwd(), "dist", "exercise-db.json");
-
-for (const p of [dbPath, altPath, altPath2, altPath3]) {
   try {
-    if (fs.existsSync(p)) {
-      exerciseDb = JSON.parse(fs.readFileSync(p, "utf-8"));
-      console.log(`[exercise-lookup] Loaded ${exerciseDb.length} exercises from ${p}`);
-      break;
+    const encoded = encodeURIComponent(name.trim().toLowerCase());
+    const url = `${BASE_URL}/${encoded}?limit=1`;
+    const res = await fetch(url, {
+      headers: {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "exercisedb.p.rapidapi.com",
+      },
+    });
+
+    if (!res.ok) {
+      console.error(`[exercise-lookup] API error ${res.status}: ${await res.text()}`);
+      return null;
     }
-  } catch (e) {
-    console.error(`[exercise-lookup] Failed to load from ${p}:`, e);
-  }
-}
 
-if (exerciseDb.length === 0) {
-  console.warn("[exercise-lookup] No exercise database loaded — image lookup will be disabled");
-}
-
-// Simple fuzzy matching: normalized lowercase, remove common prefixes/suffixes, Levenshtein-like scoring
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function similarity(a: string, b: string): number {
-  const na = normalize(a);
-  const nb = normalize(b);
-  
-  // Exact match
-  if (na === nb) return 1;
-  
-  // Contains match
-  if (nb.includes(na) || na.includes(nb)) return 0.8;
-  
-  // Word overlap scoring
-  const wordsA = na.split(" ");
-  const wordsB = nb.split(" ");
-  let matchingWords = 0;
-  for (const wa of wordsA) {
-    if (wa.length < 2) continue;
-    for (const wb of wordsB) {
-      if (wb.includes(wa) || wa.includes(wb)) {
-        matchingWords++;
-        break;
-      }
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0 && data[0].gifUrl) {
+      return data[0].gifUrl;
     }
+    return null;
+  } catch (e: any) {
+    console.error("[exercise-lookup] Fetch error:", e.message);
+    return null;
   }
-  const maxWords = Math.max(wordsA.length, wordsB.length);
-  return maxWords > 0 ? matchingWords / maxWords * 0.7 : 0;
-}
-
-export function findExerciseImage(name: string): string | null {
-  if (exerciseDb.length === 0 || !name) return null;
-  
-  let bestMatch: ExerciseEntry | null = null;
-  let bestScore = 0;
-  
-  for (const ex of exerciseDb) {
-    const score = similarity(name, ex.name);
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = ex;
-    }
-  }
-  
-  // Only return if we have a reasonable match (>= 0.4)
-  if (bestMatch && bestScore >= 0.4 && bestMatch.images?.length > 0) {
-    return IMAGE_BASE + bestMatch.images[0];
-  }
-  
-  return null;
 }
