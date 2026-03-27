@@ -178,6 +178,8 @@ sqlite.exec(`
 
 // Migration: add pin_hash column
 try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
+// Migration: add name column to credentials
+try { sqlite.exec("ALTER TABLE credentials ADD COLUMN name TEXT"); } catch {}
 
 // Seed default trainer user
 {
@@ -485,18 +487,25 @@ export class SqliteStorage {
   getCredentialByCredentialId(credentialId: string): Credential | undefined {
     return db.select().from(credentials).where(eq(credentials.credentialId, credentialId)).get();
   }
-  createCredential(data: { userId: number; credentialId: string; publicKey: string; counter: number; transports?: string | null; createdAt: string }): void {
+  createCredential(data: { userId: number; credentialId: string; publicKey: string; counter: number; transports?: string | null; name?: string | null; createdAt: string }): void {
     db.insert(credentials).values({
       userId: data.userId,
       credentialId: data.credentialId,
       publicKey: data.publicKey,
       counter: data.counter,
       transports: data.transports ?? null,
+      name: data.name ?? null,
       createdAt: data.createdAt,
     }).run();
   }
   updateCredentialCounter(credentialId: string, newCounter: number): void {
     db.update(credentials).set({ counter: newCounter }).where(eq(credentials.credentialId, credentialId)).run();
+  }
+  deleteCredential(id: number, userId: number): boolean {
+    const cred = db.select().from(credentials).where(eq(credentials.id, id)).get();
+    if (!cred || cred.userId !== userId) return false;
+    db.delete(credentials).where(eq(credentials.id, id)).run();
+    return true;
   }
 
   // ===== AUTH: Sessions =====

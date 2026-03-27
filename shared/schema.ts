@@ -157,6 +157,7 @@ export const credentials = sqliteTable("credentials", {
   publicKey: text("public_key").notNull(), // base64url encoded
   counter: integer("counter").notNull().default(0),
   transports: text("transports"), // JSON array
+  name: text("name"), // user-friendly name e.g. "MacBook Touch ID"
   createdAt: text("created_at").notNull(),
 });
 

@@ -104,7 +104,7 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
   // POST /api/auth/register/verify
   app.post("/api/auth/register/verify", async (req: Request, res: Response) => {
     try {
-      const { sessionId, response } = req.body;
+      const { sessionId, response, name } = req.body;
       if (!sessionId || !response) return res.status(400).json({ error: "Missing sessionId or response" });
 
       const session = storage.getSession(sessionId);
@@ -133,6 +133,7 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
         transports: response.response.transports
           ? JSON.stringify(response.response.transports)
           : null,
+        name: name || null,
         createdAt: new Date().toISOString(),
       });
 
@@ -468,6 +469,34 @@ export function registerAuthRoutes(app: Express, storage: SqliteStorage) {
   app.delete("/api/admin/whitelist/:id", (req: Request, res: Response) => {
     if (!isAdmin(req)) return res.status(403).json({ error: "Geen toegang" });
     storage.removeWhitelistedEmail(parseInt(req.params.id));
+    res.json({ ok: true });
+  });
+
+  // GET /api/auth/passkeys — list passkeys for current user
+  app.get("/api/auth/passkeys", (req: Request, res: Response) => {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const session = storage.getSession(token);
+    if (!session) return res.status(401).json({ error: "Invalid session" });
+
+    const creds = storage.getCredentialsByUserId(session.user.id);
+    res.json(creds.map(c => ({
+      id: c.id,
+      name: c.name || "Naamloos",
+      createdAt: c.createdAt,
+    })));
+  });
+
+  // DELETE /api/auth/passkeys/:id — delete a passkey
+  app.delete("/api/auth/passkeys/:id", (req: Request, res: Response) => {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    const session = storage.getSession(token);
+    if (!session) return res.status(401).json({ error: "Invalid session" });
+
+    const id = parseInt(req.params.id);
+    const deleted = storage.deleteCredential(id, session.user.id);
+    if (!deleted) return res.status(404).json({ error: "Passkey niet gevonden" });
     res.json({ ok: true });
   });
 
