@@ -224,7 +224,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                   const globalIdx = sortedExercises.findIndex(e => e.id === ex.id);
                   // Spacer: 4px within superset, 12px between groups/exercises
                   const isFirstOverall = gi === 0 && ei === 0;
-                  const spacerHeight = (isSuperset && ei > 0) ? 'h-1' : 'h-3';
+                  const spacerHeight = (isSuperset && ei > 0) ? 'h-1' : 'h-4';
 
                   return (
                     <Fragment key={ex.id}>
