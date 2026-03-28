@@ -197,6 +197,23 @@ try { sqlite.exec("ALTER TABLE exercises ADD COLUMN image_url TEXT"); } catch {}
 // Migration: add skipped column to weight_logs
 try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0"); } catch {}
 
+// Cleanup: remove duplicate exercise library entries (keep lowest id per name+owner)
+{
+  const dupes = sqlite.prepare(`
+    SELECT id FROM exercise_library
+    WHERE id NOT IN (
+      SELECT MIN(id) FROM exercise_library
+      GROUP BY LOWER(TRIM(name)), COALESCE(owner_id, 0)
+    )
+  `).all() as { id: number }[];
+  if (dupes.length > 0) {
+    for (const d of dupes) {
+      sqlite.prepare("DELETE FROM exercise_library WHERE id = ?").run(d.id);
+    }
+    console.log(`[migration] Removed ${dupes.length} duplicate exercise library entries`);
+  }
+}
+
 // Seed default trainer user
 {
   const userCount = db.select().from(users).all().length;
@@ -430,11 +447,14 @@ export class SqliteStorage {
     return db.select().from(exerciseLibrary).all();
   }
   addToExerciseLibrary(name: string, ownerId?: number): ExerciseLibrary | undefined {
-    // Check for existing with same name and owner
-    const allMatching = db.select().from(exerciseLibrary).where(eq(exerciseLibrary.name, name)).all();
-    const existing = allMatching.find(e => e.ownerId === (ownerId ?? null));
+    // Case-insensitive check for existing with same name and owner
+    const ownerFilter = ownerId != null ? ` AND owner_id = ?` : ` AND owner_id IS NULL`;
+    const ownerParams = ownerId != null ? [ownerId] : [];
+    const existing = sqlite.prepare(
+      `SELECT id, name, active, weight_type AS weightType, owner_id AS ownerId FROM exercise_library WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))${ownerFilter}`
+    ).get(name, ...ownerParams) as ExerciseLibrary | undefined;
     if (existing) return existing;
-    try { return db.insert(exerciseLibrary).values({ name, active: 1, ownerId: ownerId ?? null }).returning().get(); } catch { return undefined; }
+    try { return db.insert(exerciseLibrary).values({ name: name.trim(), active: 1, ownerId: ownerId ?? null }).returning().get(); } catch { return undefined; }
   }
   toggleExerciseLibraryActive(id: number, active: boolean): void {
     sqlite.prepare("UPDATE exercise_library SET active = ? WHERE id = ?").run(active ? 1 : 0, id);
