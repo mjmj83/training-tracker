@@ -189,8 +189,8 @@ export function registerRoutes(server: Server, app: Express): void {
     res.json(storage.getWeightLogsByMonth(parseInt(req.params.monthId)));
   });
   app.post("/api/weight-logs", (req, res) => {
-    const { exerciseId, weekNumber, setNumber, weight, reps, notes } = req.body;
-    res.json(storage.upsertWeightLog({ exerciseId, weekNumber, setNumber, weight, reps, notes: notes ?? "" }));
+    const { exerciseId, weekNumber, setNumber, weight, reps, notes, skipped } = req.body;
+    res.json(storage.upsertWeightLog({ exerciseId, weekNumber, setNumber, weight, reps, skipped: skipped ?? 0, notes: notes ?? "" }));
   });
 
   // ============= EXERCISE LAST CONFIG =============

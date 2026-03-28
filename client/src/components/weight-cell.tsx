@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MessageCircleWarning } from "lucide-react";
+import { MessageCircleWarning, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ interface Props {
   setNumber: number;
   initialWeight: number | null;
   initialReps: number | null;
+  initialSkipped: number;
   initialNotes: string;
   monthId: number;
   onBeforeChange?: () => void;
@@ -24,7 +25,7 @@ interface Props {
 
 export default function WeightCell({
   exerciseId, weekNumber, setNumber,
-  initialWeight, initialReps, initialNotes, monthId, onBeforeChange,
+  initialWeight, initialReps, initialSkipped, initialNotes, monthId, onBeforeChange,
   readOnly = false,
   previousWeight,
   previousReps,
@@ -33,15 +34,16 @@ export default function WeightCell({
   const isRepsOnly = weightType === "reps_only";
   const [weight, setWeight] = useState(initialWeight !== null ? String(initialWeight) : "");
   const [reps, setReps] = useState(initialReps !== null ? String(initialReps) : "");
+  const [skipped, setSkipped] = useState(!!initialSkipped);
   const [notes, setNotes] = useState(initialNotes || "");
   const [showNotesDialog, setShowNotesDialog] = useState(false);
   const [editingNotes, setEditingNotes] = useState("");
 
   const upsertLog = useMutation({
-    mutationFn: (data: { weight: number | null; reps: number | null; notes?: string }) =>
+    mutationFn: (data: { weight: number | null; reps: number | null; skipped?: number; notes?: string }) =>
       apiRequest("POST", "/api/weight-logs", {
         exerciseId, weekNumber, setNumber,
-        weight: data.weight, reps: data.reps, notes: data.notes,
+        weight: data.weight, reps: data.reps, skipped: data.skipped, notes: data.notes,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
@@ -79,36 +81,69 @@ export default function WeightCell({
   return (
     <>
       <div
-        className="group/cell flex items-center justify-center gap-0.5 rounded bg-muted/60 px-1 py-0.5 relative"
+        className={`group/cell flex items-center justify-center gap-0.5 rounded px-1 py-0.5 relative ${skipped ? "bg-muted/30" : "bg-muted/60"}`}
         data-testid={`weight-cell-${exerciseId}-w${weekNumber}-s${setNumber}`}
       >
-        {!isRepsOnly && (
+        {skipped ? (
+          <span className="text-xs text-muted-foreground/50 italic w-full text-center">skip</span>
+        ) : (
           <>
+            {!isRepsOnly && (
+              <>
+                <input
+                  value={weight}
+                  onChange={(e) => { if (!readOnly) setWeight(e.target.value); }}
+                  onBlur={handleBlur}
+                  onFocus={handleWeightFocus}
+                  placeholder={previousWeight != null ? String(previousWeight) : "kg"}
+                  className="w-[36px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
+                  readOnly={readOnly}
+                  data-testid={`input-weight-${exerciseId}-w${weekNumber}-s${setNumber}`}
+                />
+                <span className="text-muted-foreground text-xs">x</span>
+              </>
+            )}
             <input
-              value={weight}
-              onChange={(e) => { if (!readOnly) setWeight(e.target.value); }}
+              value={reps}
+              onChange={(e) => { if (!readOnly) setReps(e.target.value); }}
               onBlur={handleBlur}
-              onFocus={handleWeightFocus}
-              placeholder={previousWeight != null ? String(previousWeight) : "kg"}
-              className="w-[36px] bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono"
+              onFocus={handleRepsFocus}
+              placeholder={previousReps != null ? String(previousReps) : "r"}
+              className={`bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono ${isRepsOnly ? "w-[36px]" : "w-[24px]"}`}
               readOnly={readOnly}
-              data-testid={`input-weight-${exerciseId}-w${weekNumber}-s${setNumber}`}
+              data-testid={`input-reps-${exerciseId}-w${weekNumber}-s${setNumber}`}
             />
-            <span className="text-muted-foreground text-xs">x</span>
           </>
         )}
-        <input
-          value={reps}
-          onChange={(e) => { if (!readOnly) setReps(e.target.value); }}
-          onBlur={handleBlur}
-          onFocus={handleRepsFocus}
-          placeholder={previousReps != null ? String(previousReps) : "r"}
-          className={`bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono ${isRepsOnly ? "w-[36px]" : "w-[24px]"}`}
-          readOnly={readOnly}
-          data-testid={`input-reps-${exerciseId}-w${weekNumber}-s${setNumber}`}
-        />
-        {/* Notes icon */}
-        {!readOnly ? (
+        {/* Skip + Notes icons */}
+        {!readOnly && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  const newSkipped = !skipped;
+                  setSkipped(newSkipped);
+                  onBeforeChange?.();
+                  const w = weight ? parseFloat(weight) : null;
+                  const r = reps ? parseInt(reps) : null;
+                  upsertLog.mutate({ weight: w, reps: r, skipped: newSkipped ? 1 : 0 });
+                }}
+                className={`shrink-0 ml-0.5 transition-opacity ${
+                  skipped
+                    ? "text-destructive/60 opacity-100"
+                    : "text-muted-foreground/40 opacity-0 group-hover/cell:opacity-100"
+                }`}
+                data-testid={`button-skip-${exerciseId}-w${weekNumber}-s${setNumber}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {skipped ? "Unskip" : "Set overslaan"}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {!readOnly && !skipped ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -130,7 +165,7 @@ export default function WeightCell({
               {hasNotes ? notes : "Opmerking toevoegen"}
             </TooltipContent>
           </Tooltip>
-        ) : hasNotes ? (
+        ) : !readOnly ? null : hasNotes ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="shrink-0 ml-0.5 text-primary">

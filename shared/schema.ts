@@ -99,6 +99,7 @@ export const weightLogs = sqliteTable("weight_logs", {
   setNumber: integer("set_number").notNull(), // 1-5
   weight: real("weight"), // kg
   reps: integer("reps"), // actual reps achieved
+  skipped: integer("skipped").notNull().default(0), // 1 = skipped
   notes: text("notes").default(""), // per-set notes
 });
 

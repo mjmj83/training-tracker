@@ -194,6 +194,8 @@ try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE credentials ADD COLUMN name TEXT"); } catch {}
 // Migration: add image_url column to exercises
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN image_url TEXT"); } catch {}
+// Migration: add skipped column to weight_logs
+try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0"); } catch {}
 
 // Seed default trainer user
 {
@@ -401,7 +403,7 @@ export class SqliteStorage {
     const existing = db.select().from(weightLogs).where(and(
       eq(weightLogs.exerciseId, data.exerciseId), eq(weightLogs.weekNumber, data.weekNumber), eq(weightLogs.setNumber, data.setNumber)
     )).get();
-    if (existing) return db.update(weightLogs).set({ weight: data.weight, reps: data.reps, notes: data.notes ?? existing.notes }).where(eq(weightLogs.id, existing.id)).returning().get();
+    if (existing) return db.update(weightLogs).set({ weight: data.weight, reps: data.reps, skipped: data.skipped ?? existing.skipped, notes: data.notes ?? existing.notes }).where(eq(weightLogs.id, existing.id)).returning().get();
     return db.insert(weightLogs).values(data).returning().get();
   }
 
