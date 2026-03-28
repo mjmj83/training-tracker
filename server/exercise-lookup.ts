@@ -18,27 +18,17 @@ if (!fs.existsSync(GIF_DIR)) {
 const gifCount = fs.readdirSync(GIF_DIR).filter(f => f.endsWith(".gif")).length;
 console.log(`[exercise-lookup] GIF cache: ${GIF_DIR} (${gifCount} cached)`);
 
-// Generate a safe filename from exercise name
-function nameToFilename(name: string): string {
-  const hash = crypto.createHash("md5").update(name.toLowerCase().trim()).digest("hex").slice(0, 8);
-  const safe = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 60);
+// Generate a safe filename from a unique key
+function toFilename(key: string): string {
+  const hash = crypto.createHash("md5").update(key).digest("hex").slice(0, 12);
+  const safe = key.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 50);
   return `${safe}_${hash}.gif`;
 }
 
-// Check if we already have this GIF cached locally
-function getCachedGif(name: string): string | null {
-  const filename = nameToFilename(name);
-  const filepath = path.join(GIF_DIR, filename);
-  if (fs.existsSync(filepath)) {
-    return `/api/exercise-gifs/${filename}`;
-  }
-  return null;
-}
-
-// Download a GIF from URL and save locally
-async function cacheGif(name: string, remoteUrl: string): Promise<string | null> {
+// Download a GIF from URL and save locally, return local path
+export async function cacheGif(remoteUrl: string): Promise<string | null> {
   try {
-    const filename = nameToFilename(name);
+    const filename = toFilename(remoteUrl);
     const filepath = path.join(GIF_DIR, filename);
 
     // Don't re-download if already cached
@@ -62,38 +52,57 @@ async function cacheGif(name: string, remoteUrl: string): Promise<string | null>
   }
 }
 
-// Main lookup: check local cache first, then API, then cache the result
-export async function findExerciseImage(name: string): Promise<string | null> {
-  if (!name || name.trim().length < 2) return null;
+// Search the API and return multiple options (name + gifUrl)
+export interface ExerciseImageOption {
+  name: string;
+  gifUrl: string;
+  bodyPart?: string;
+  target?: string;
+  equipment?: string;
+}
 
-  // 1. Check local cache
-  const cached = getCachedGif(name);
-  if (cached) return cached;
+export async function searchExerciseImages(query: string, limit: number = 5): Promise<ExerciseImageOption[]> {
+  if (!query || query.trim().length < 2) return [];
 
-  // 2. Search the API
   try {
-    const encoded = encodeURIComponent(name.trim().toLowerCase());
-    const url = `${API_BASE}?search=${encoded}&limit=1`;
+    const encoded = encodeURIComponent(query.trim().toLowerCase());
+    const url = `${API_BASE}?search=${encoded}&limit=${limit}`;
     const res = await fetch(url);
 
     if (!res.ok) {
       console.error(`[exercise-lookup] API error ${res.status}`);
-      return null;
+      return [];
     }
 
     const json = await res.json();
     const exercises = json?.data?.exercises ?? json?.data ?? [];
 
-    if (Array.isArray(exercises) && exercises.length > 0 && exercises[0].gifUrl) {
-      // 3. Download and cache the GIF locally
-      const localUrl = await cacheGif(name, exercises[0].gifUrl);
-      return localUrl;
-    }
-    return null;
+    if (!Array.isArray(exercises)) return [];
+
+    return exercises
+      .filter((ex: any) => ex.gifUrl)
+      .map((ex: any) => ({
+        name: ex.name,
+        gifUrl: ex.gifUrl,
+        bodyPart: ex.bodyParts?.[0] || ex.bodyPart,
+        target: ex.targetMuscles?.[0] || ex.target,
+        equipment: ex.equipments?.[0] || ex.equipment,
+      }));
   } catch (e: any) {
-    console.error("[exercise-lookup] Fetch error:", e.message);
-    return null;
+    console.error("[exercise-lookup] Search error:", e.message);
+    return [];
   }
+}
+
+// Auto-pick: search and cache the first result (used on exercise create/rename)
+export async function findExerciseImage(name: string): Promise<string | null> {
+  if (!name || name.trim().length < 2) return null;
+
+  const results = await searchExerciseImages(name, 1);
+  if (results.length > 0) {
+    return await cacheGif(results[0].gifUrl);
+  }
+  return null;
 }
 
 // Export for serving cached GIFs

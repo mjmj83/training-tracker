@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon } from "lucide-react";
+import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon, Search, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -318,16 +318,14 @@ export default function ExerciseRow({
           >
             <BarChart3 className="w-3.5 h-3.5" />
           </button>
-          {/* Image icon — under chart icon, only if image exists */}
-          {exercise.imageUrl && (
-            <button
-              onClick={() => setShowImage(true)}
-              className="text-muted-foreground/40 hover:text-primary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex items-center justify-center w-full"
-              data-testid={`button-image-${exercise.id}`}
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-            </button>
-          )}
+          {/* Image icon — under chart icon */}
+          <button
+            onClick={() => setShowImage(true)}
+            className={`shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex items-center justify-center w-full ${exercise.imageUrl ? "text-muted-foreground/40 hover:text-primary" : "text-muted-foreground/20 hover:text-muted-foreground"}`}
+            data-testid={`button-image-${exercise.id}`}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+          </button>
         </td>
       )}
 
@@ -415,25 +413,148 @@ export default function ExerciseRow({
           open={showChart}
           onOpenChange={setShowChart}
         />
-        {/* Exercise image dialog */}
-        {exercise.imageUrl && (
-          <Dialog open={showImage} onOpenChange={setShowImage}>
-            <DialogContent className="sm:max-w-[400px] p-4">
-              <DialogHeader>
-                <DialogTitle className="text-sm">{exercise.name}</DialogTitle>
-              </DialogHeader>
-              <div className="flex justify-center">
-                <img
-                  src={exercise.imageUrl}
-                  alt={exercise.name}
-                  className="rounded-md max-h-[400px] object-contain"
-                  loading="lazy"
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        {/* Exercise image dialog with picker */}
+        <ExerciseImageDialog
+          open={showImage}
+          onOpenChange={setShowImage}
+          exercise={exercise}
+          monthId={monthId}
+          readOnly={readOnly}
+        />
       </td>
     </tr>
+  );
+}
+
+// --- Exercise Image Dialog with search/picker ---
+function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  exercise: Exercise;
+  monthId: number;
+  readOnly?: boolean;
+}) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [selecting, setSelecting] = useState<string | null>(null);
+
+  const activeQuery = searchQuery.trim() || exercise.name;
+
+  const { data: results = [], isFetching } = useQuery<{ name: string; gifUrl: string; bodyPart?: string; target?: string; equipment?: string }[]>({
+    queryKey: ["/api/exercise-images/search", activeQuery],
+    queryFn: () => apiRequest("GET", `/api/exercise-images/search?q=${encodeURIComponent(activeQuery)}`).then(r => r.json()),
+    enabled: open && searching,
+    staleTime: 60000,
+  });
+
+  const selectImage = useMutation({
+    mutationFn: (gifUrl: string) => apiRequest("POST", "/api/exercise-images/select", { exerciseId: exercise.id, gifUrl }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+      setSearching(false);
+      setSelecting(null);
+    },
+  });
+
+  const handleSelect = (gifUrl: string) => {
+    setSelecting(gifUrl);
+    selectImage.mutate(gifUrl);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setSearching(false); setSearchQuery(""); } }}>
+      <DialogContent className="sm:max-w-[500px] p-4 max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-sm">{exercise.name}</DialogTitle>
+        </DialogHeader>
+
+        {/* Current image */}
+        {exercise.imageUrl && !searching && (
+          <div className="flex justify-center">
+            <img
+              src={exercise.imageUrl}
+              alt={exercise.name}
+              className="rounded-md max-h-[300px] object-contain"
+              loading="lazy"
+            />
+          </div>
+        )}
+
+        {!exercise.imageUrl && !searching && (
+          <p className="text-xs text-muted-foreground text-center py-4">Geen afbeelding gekoppeld.</p>
+        )}
+
+        {/* Search mode */}
+        {searching && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={exercise.name}
+                className="flex-1 text-sm border border-border rounded-md px-2 py-1.5 bg-background outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === "Escape") setSearching(false); }}
+                data-testid="input-image-search"
+              />
+            </div>
+
+            {isFetching && <p className="text-xs text-muted-foreground text-center">Zoeken...</p>}
+
+            {!isFetching && results.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center">Geen resultaten gevonden.</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              {results.map((r, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSelect(r.gifUrl)}
+                  disabled={!!selecting}
+                  className={`relative border rounded-md overflow-hidden hover:border-primary transition-colors ${
+                    selecting === r.gifUrl ? "border-primary ring-2 ring-primary/30" : "border-border"
+                  }`}
+                  data-testid={`button-select-image-${i}`}
+                >
+                  <img
+                    src={r.gifUrl}
+                    alt={r.name}
+                    className="w-full h-[120px] object-contain bg-white"
+                    loading="lazy"
+                  />
+                  <div className="px-1.5 py-1 bg-card">
+                    <p className="text-[10px] font-medium truncate">{r.name}</p>
+                    {r.target && (
+                      <p className="text-[9px] text-muted-foreground truncate">{r.target}{r.equipment ? ` · ${r.equipment}` : ""}</p>
+                    )}
+                  </div>
+                  {selecting === r.gifUrl && (
+                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                      <Check className="w-6 h-6 text-primary" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Actions */}
+        {!readOnly && (
+          <div className="flex justify-end gap-2 pt-1">
+            {searching ? (
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setSearching(false)}>
+                Annuleren
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setSearching(true)}>
+                <Search className="w-3 h-3" />
+                {exercise.imageUrl ? "Andere afbeelding" : "Afbeelding zoeken"}
+              </Button>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

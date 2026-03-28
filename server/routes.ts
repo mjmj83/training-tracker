@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { registerAuthRoutes, authMiddleware } from "./auth";
 import ExcelJS from "exceljs";
-import { findExerciseImage, getGifDir } from "./exercise-lookup";
+import { findExerciseImage, searchExerciseImages, cacheGif, getGifDir } from "./exercise-lookup";
 import express from "express";
 
 export function registerRoutes(server: Server, app: Express): void {
@@ -119,6 +119,22 @@ export function registerRoutes(server: Server, app: Express): void {
   app.delete("/api/training-days/:id", (req, res) => {
     storage.deleteTrainingDay(parseInt(req.params.id));
     res.json({ ok: true });
+  });
+
+  // ============= EXERCISE IMAGE SEARCH =============
+  app.get("/api/exercise-images/search", async (req, res) => {
+    const q = String(req.query.q || "");
+    if (q.length < 2) return res.json([]);
+    const results = await searchExerciseImages(q, 6);
+    res.json(results);
+  });
+  app.post("/api/exercise-images/select", async (req, res) => {
+    const { exerciseId, gifUrl } = req.body;
+    if (!exerciseId || !gifUrl) return res.status(400).json({ error: "exerciseId and gifUrl required" });
+    const localUrl = await cacheGif(gifUrl);
+    if (!localUrl) return res.status(500).json({ error: "Failed to cache image" });
+    storage.updateExercise(exerciseId, { imageUrl: localUrl });
+    res.json({ imageUrl: localUrl });
   });
 
   // ============= EXERCISES =============
