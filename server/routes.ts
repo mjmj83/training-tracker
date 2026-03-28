@@ -5,6 +5,9 @@ import { registerAuthRoutes, authMiddleware } from "./auth";
 import ExcelJS from "exceljs";
 import { findExerciseImage, searchExerciseImages, cacheGif, getGifDir } from "./exercise-lookup";
 import express from "express";
+import multer from "multer";
+import path from "path";
+import crypto from "crypto";
 
 export function registerRoutes(server: Server, app: Express): void {
   // ============= EXERCISE GIF CACHE =============
@@ -133,6 +136,35 @@ export function registerRoutes(server: Server, app: Express): void {
     if (!exerciseId || !gifUrl) return res.status(400).json({ error: "exerciseId and gifUrl required" });
     const localUrl = await cacheGif(gifUrl);
     if (!localUrl) return res.status(500).json({ error: "Failed to cache image" });
+    storage.updateExercise(exerciseId, { imageUrl: localUrl });
+    res.json({ imageUrl: localUrl });
+  });
+
+  // Upload custom exercise image
+  const gifDir = getGifDir();
+  const upload = multer({
+    storage: multer.diskStorage({
+      destination: gifDir,
+      filename: (_req, file, cb) => {
+        const hash = crypto.randomBytes(6).toString("hex");
+        const ext = path.extname(file.originalname) || ".gif";
+        cb(null, `custom_${hash}${ext}`);
+      },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (_req, file, cb) => {
+      const allowed = /\.(gif|jpg|jpeg|png|webp)$/i;
+      if (allowed.test(path.extname(file.originalname))) {
+        cb(null, true);
+      } else {
+        cb(new Error("Alleen GIF, JPG, PNG of WebP"));
+      }
+    },
+  });
+  app.post("/api/exercise-images/upload", upload.single("image"), (req, res) => {
+    const exerciseId = parseInt(req.body.exerciseId);
+    if (!exerciseId || !req.file) return res.status(400).json({ error: "exerciseId and image required" });
+    const localUrl = `/api/exercise-gifs/${req.file.filename}`;
     storage.updateExercise(exerciseId, { imageUrl: localUrl });
     res.json({ imageUrl: localUrl });
   });

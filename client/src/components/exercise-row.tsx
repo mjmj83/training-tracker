@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon, Search, Check } from "lucide-react";
+import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon, Search, Check, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -426,7 +426,7 @@ export default function ExerciseRow({
   );
 }
 
-// --- Exercise Image Dialog with search/picker ---
+// --- Exercise Image Dialog with search/upload tabs ---
 function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -434,16 +434,18 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
   monthId: number;
   readOnly?: boolean;
 }) {
+  const [mode, setMode] = useState<"view" | "search" | "upload">("view");
   const [searchQuery, setSearchQuery] = useState("");
-  const [searching, setSearching] = useState(false);
   const [selecting, setSelecting] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
 
   const activeQuery = searchQuery.trim() || exercise.name;
 
   const { data: results = [], isFetching } = useQuery<{ name: string; gifUrl: string; bodyPart?: string; target?: string; equipment?: string }[]>({
     queryKey: ["/api/exercise-images/search", activeQuery],
     queryFn: () => apiRequest("GET", `/api/exercise-images/search?q=${encodeURIComponent(activeQuery)}`).then(r => r.json()),
-    enabled: open && searching,
+    enabled: open && mode === "search",
     staleTime: 60000,
   });
 
@@ -451,7 +453,7 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
     mutationFn: (gifUrl: string) => apiRequest("POST", "/api/exercise-images/select", { exerciseId: exercise.id, gifUrl }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
-      setSearching(false);
+      setMode("view");
       setSelecting(null);
     },
   });
@@ -461,98 +463,190 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
     selectImage.mutate(gifUrl);
   };
 
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("exerciseId", String(exercise.id));
+
+      const token = (await import("@/lib/auth-token")).getAuthToken();
+      const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
+      const res = await fetch(`${API_BASE}/api/exercise-images/upload`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload mislukt");
+      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+      setMode("view");
+      setUploadPreview(null);
+    } catch (e: any) {
+      console.error("Upload error:", e);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleClose = (v: boolean) => {
+    onOpenChange(v);
+    if (!v) { setMode("view"); setSearchQuery(""); setUploadPreview(null); }
+  };
+
+  const isEditing = mode === "search" || mode === "upload";
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setSearching(false); setSearchQuery(""); } }}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px] p-4 max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-sm">{exercise.name}</DialogTitle>
         </DialogHeader>
 
-        {/* Current image */}
-        {exercise.imageUrl && !searching && (
-          <div className="flex justify-center">
-            <img
-              src={exercise.imageUrl}
-              alt={exercise.name}
-              className="rounded-md max-h-[300px] object-contain"
-              loading="lazy"
-            />
-          </div>
-        )}
-
-        {!exercise.imageUrl && !searching && (
-          <p className="text-xs text-muted-foreground text-center py-4">Geen afbeelding gekoppeld.</p>
-        )}
-
-        {/* Search mode */}
-        {searching && (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={exercise.name}
-                className="flex-1 text-sm border border-border rounded-md px-2 py-1.5 bg-background outline-none focus:ring-1 focus:ring-primary"
-                autoFocus
-                onKeyDown={(e) => { if (e.key === "Escape") setSearching(false); }}
-                data-testid="input-image-search"
-              />
-            </div>
-
-            {isFetching && <p className="text-xs text-muted-foreground text-center">Zoeken...</p>}
-
-            {!isFetching && results.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center">Geen resultaten gevonden.</p>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              {results.map((r, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSelect(r.gifUrl)}
-                  disabled={!!selecting}
-                  className={`relative border rounded-md overflow-hidden hover:border-primary transition-colors ${
-                    selecting === r.gifUrl ? "border-primary ring-2 ring-primary/30" : "border-border"
-                  }`}
-                  data-testid={`button-select-image-${i}`}
-                >
-                  <img
-                    src={r.gifUrl}
-                    alt={r.name}
-                    className="w-full h-[120px] object-contain bg-white"
-                    loading="lazy"
-                  />
-                  <div className="px-1.5 py-1 bg-card">
-                    <p className="text-[10px] font-medium truncate">{r.name}</p>
-                    {r.target && (
-                      <p className="text-[9px] text-muted-foreground truncate">{r.target}{r.equipment ? ` · ${r.equipment}` : ""}</p>
-                    )}
-                  </div>
-                  {selecting === r.gifUrl && (
-                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                      <Check className="w-6 h-6 text-primary" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        {!readOnly && (
-          <div className="flex justify-end gap-2 pt-1">
-            {searching ? (
-              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setSearching(false)}>
-                Annuleren
-              </Button>
+        {/* View mode: show current image */}
+        {mode === "view" && (
+          <>
+            {exercise.imageUrl ? (
+              <div className="flex justify-center">
+                <img src={exercise.imageUrl} alt={exercise.name} className="rounded-md max-h-[300px] object-contain" loading="lazy" />
+              </div>
             ) : (
-              <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setSearching(true)}>
-                <Search className="w-3 h-3" />
-                {exercise.imageUrl ? "Andere afbeelding" : "Afbeelding zoeken"}
-              </Button>
+              <p className="text-xs text-muted-foreground text-center py-4">Geen afbeelding gekoppeld.</p>
             )}
-          </div>
+            {!readOnly && (
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setMode("search")}>
+                  <Search className="w-3 h-3" />
+                  {exercise.imageUrl ? "Wijzigen" : "Afbeelding zoeken"}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Edit mode: tabs */}
+        {isEditing && !readOnly && (
+          <>
+            <div className="flex border border-border rounded-md overflow-hidden">
+              <button
+                className={`flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 transition-colors ${
+                  mode === "search" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setMode("search")}
+              >
+                <Search className="w-3 h-3" /> Zoeken
+              </button>
+              <button
+                className={`flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 transition-colors ${
+                  mode === "upload" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setMode("upload")}
+              >
+                <Upload className="w-3 h-3" /> Upload eigen afbeelding
+              </button>
+            </div>
+
+            {/* Search tab */}
+            {mode === "search" && (
+              <div className="space-y-3">
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={exercise.name}
+                  className="w-full text-sm border border-border rounded-md px-2 py-1.5 bg-background outline-none focus:ring-1 focus:ring-primary"
+                  autoFocus
+                  data-testid="input-image-search"
+                />
+
+                {isFetching && <p className="text-xs text-muted-foreground text-center">Zoeken...</p>}
+                {!isFetching && results.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center">Geen resultaten gevonden.</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  {results.map((r, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSelect(r.gifUrl)}
+                      disabled={!!selecting}
+                      className={`relative border rounded-md overflow-hidden hover:border-primary transition-colors ${
+                        selecting === r.gifUrl ? "border-primary ring-2 ring-primary/30" : "border-border"
+                      }`}
+                      data-testid={`button-select-image-${i}`}
+                    >
+                      <img src={r.gifUrl} alt={r.name} className="w-full h-[120px] object-contain bg-white" loading="lazy" />
+                      <div className="px-1.5 py-1 bg-card">
+                        <p className="text-[10px] font-medium truncate">{r.name}</p>
+                        {r.target && <p className="text-[9px] text-muted-foreground truncate">{r.target}{r.equipment ? ` · ${r.equipment}` : ""}</p>}
+                      </div>
+                      {selecting === r.gifUrl && (
+                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                          <Check className="w-6 h-6 text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload tab */}
+            {mode === "upload" && (
+              <div className="space-y-3">
+                {uploadPreview ? (
+                  <div className="space-y-3">
+                    <div className="flex justify-center">
+                      <img src={uploadPreview} alt="Preview" className="rounded-md max-h-[200px] object-contain" />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => setUploadPreview(null)}>
+                        Annuleren
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="text-xs"
+                        disabled={uploading}
+                        onClick={() => {
+                          const input = document.querySelector<HTMLInputElement>("#exercise-image-upload");
+                          if (input?.files?.[0]) handleUpload(input.files[0]);
+                        }}
+                      >
+                        {uploading ? "Uploaden..." : "Opslaan"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-md p-8 cursor-pointer hover:border-primary/50 transition-colors"
+                    htmlFor="exercise-image-upload"
+                  >
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Klik om een afbeelding te kiezen</span>
+                    <span className="text-[10px] text-muted-foreground/60">GIF, JPG, PNG of WebP (max 10MB)</span>
+                  </label>
+                )}
+                <input
+                  id="exercise-image-upload"
+                  type="file"
+                  accept=".gif,.jpg,.jpeg,.png,.webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setUploadPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  data-testid="input-image-upload"
+                />
+              </div>
+            )}
+
+            {/* Back button */}
+            <div className="flex justify-start pt-1">
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setMode("view"); setUploadPreview(null); }}>
+                Terug
+              </Button>
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
