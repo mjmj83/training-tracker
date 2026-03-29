@@ -245,7 +245,7 @@ export default function ExerciseRow({
           onMouseLeave={() => onWeekHover(null)}
         >
           <div className="flex flex-col items-center gap-0.5">
-            {Array.from({ length: parseInt(String(sets)) || 3 }, (_, i) => i + 1).map((setNum) => {
+            {Array.from({ length: Math.max(...String(sets).split(/[-–]/).map(s => parseInt(s.trim())).filter(n => !isNaN(n)), 3) }, (_, i) => i + 1).map((setNum) => {
               const log = getLog(weekNum, setNum);
               const prevLog = setNum > 1 ? getLog(weekNum, setNum - 1) : null;
               return (
