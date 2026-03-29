@@ -169,14 +169,12 @@ export default function ExerciseRow({
         {/* Line 1: Exercise name */}
         <div className="flex items-center gap-1">
           <div className="flex-1 min-w-0 flex items-center gap-1">
-            <input
-              value={name}
-              onChange={(e) => { if (!readOnly) setName(e.target.value); }}
-              onBlur={() => handleBlur("name", name)}
-              className={`flex-1 min-w-0 bg-transparent border-none outline-none text-[15px] font-semibold ${!readOnly ? "cursor-grab active:cursor-grabbing" : ""}`}
-              readOnly={readOnly}
-              data-testid={`input-exercise-name-${exercise.id}`}
-            />
+            <span
+              className={`flex-1 min-w-0 text-[15px] font-semibold truncate ${!readOnly ? "cursor-grab active:cursor-grabbing" : ""}`}
+              data-testid={`text-exercise-name-${exercise.id}`}
+            >
+              {name}
+            </span>
           </div>
         </div>
 
