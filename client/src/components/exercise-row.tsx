@@ -48,10 +48,10 @@ export default function ExerciseRow({
   onSwapSupersetOrder,
 }: Props) {
   const [name, setName] = useState(exercise.name);
-  const [sets, setSets] = useState(String(exercise.sets));
-  const [goalReps, setGoalReps] = useState(String(exercise.goalReps));
+  const [sets, setSets] = useState(String(exercise.sets ?? "3"));
+  const [goalReps, setGoalReps] = useState(String(exercise.goalReps ?? "10"));
   const [tempo, setTempo] = useState(exercise.tempo ?? "");
-  const [rest, setRest] = useState(String(exercise.rest ?? 60));
+  const [rest, setRest] = useState(String(exercise.rest ?? "60"));
   const [rir, setRir] = useState(exercise.rir ?? "");
   const [notes, setNotes] = useState(exercise.notes ?? "");
   const [weightType, setWeightType] = useState(exercise.weightType ?? "weighted");
@@ -192,10 +192,10 @@ export default function ExerciseRow({
 
         {/* Line 2: Settings badges */}
         <div className="flex gap-2 items-center mt-2">
-          {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { type: "number", inputWidth: "w-10", min: 1, tip: "Set range, bijv. 2 of 3-4" })}
+          {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { inputWidth: "w-10", placeholder: "3", tip: "Set range, bijv. 2 of 3-4" })}
           {renderBadge("reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-12", placeholder: "10", tip: "Rep range, bijv. 10 of 10-15" })}
           {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-10", placeholder: "—", tip: "Elk getal = seconden. Bijv. 3010: 3s zakken, 0s pauze onder, 1s omhoog, 0s rust boven" })}
-          {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { type: "number", inputWidth: "w-10", min: 5, tip: "Seconden rust tussen de sets" })}
+          {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { inputWidth: "w-10", placeholder: "60", tip: "Seconden rust tussen de sets" })}
           {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-8", placeholder: "—", tip: "Reps In Reserve range, bijv. 2 of 0-1" })}
         </div>
 

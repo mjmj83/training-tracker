@@ -62,10 +62,10 @@ export const exercises = sqliteTable("exercises", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   trainingDayId: integer("training_day_id").notNull().references(() => trainingDays.id),
   name: text("name").notNull(),
-  sets: integer("sets").notNull().default(3),
-  goalReps: integer("goal_reps").notNull().default(10),
+  sets: text("sets").notNull().default("3"), // e.g. "3" or "3-4"
+  goalReps: text("goal_reps").notNull().default("10"), // e.g. "10" or "10-15"
   tempo: text("tempo").default(""),
-  rest: integer("rest").default(60), // seconds
+  rest: text("rest").default("60"), // seconds, e.g. "60" or "60-90"
   rir: text("rir").default(""), // Reps In Reserve e.g. "2" or "0-1"
   weightType: text("weight_type").notNull().default("weighted"), // 'weighted' | 'reps_only'
   notes: text("notes").default(""), // personal notes/remarks
