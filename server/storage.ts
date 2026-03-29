@@ -117,6 +117,7 @@ try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN weight_type TEXT NOT 
 // Multi-tenant migrations
 try { sqlite.exec("ALTER TABLE clients ADD COLUMN owner_id INTEGER"); } catch {}
 try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN owner_id INTEGER"); } catch {}
+try { sqlite.exec("ALTER TABLE exercise_library ADD COLUMN search_tags TEXT DEFAULT ''"); } catch {}
 try { sqlite.exec("DROP INDEX IF EXISTS exercise_library_name_unique"); } catch {}
 
 sqlite.exec(`
@@ -424,27 +425,30 @@ export class SqliteStorage {
     return db.insert(weightLogs).values(data).returning().get();
   }
 
-  // Exercise Library — fuzzy search (active only)
+  // Exercise Library — fuzzy search (active only, searches name + tags)
   searchExerciseLibrary(query: string, ownerId?: number): ExerciseLibrary[] {
     const ownerFilter = ownerId != null ? ` AND owner_id = ?` : ``;
     const ownerParams = ownerId != null ? [ownerId] : [];
+    const cols = `id, name, search_tags AS searchTags, active, weight_type AS weightType, owner_id AS ownerId`;
     if (!query || query.length === 0) {
-      return sqlite.prepare(`SELECT id, name, active, owner_id AS ownerId FROM exercise_library WHERE active = 1${ownerFilter} ORDER BY name`).all(...ownerParams) as ExerciseLibrary[];
+      return sqlite.prepare(`SELECT ${cols} FROM exercise_library WHERE active = 1${ownerFilter} ORDER BY name`).all(...ownerParams) as ExerciseLibrary[];
     }
     const words = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
     if (words.length === 0) {
-      return sqlite.prepare(`SELECT id, name, active, owner_id AS ownerId FROM exercise_library WHERE active = 1${ownerFilter} ORDER BY name`).all(...ownerParams) as ExerciseLibrary[];
+      return sqlite.prepare(`SELECT ${cols} FROM exercise_library WHERE active = 1${ownerFilter} ORDER BY name`).all(...ownerParams) as ExerciseLibrary[];
     }
-    const conditions = words.map(() => `LOWER(name) LIKE ?`).join(" AND ");
-    const params = words.map(w => `%${w}%`);
-    return sqlite.prepare(`SELECT id, name, active, owner_id AS ownerId FROM exercise_library WHERE active = 1 AND ${conditions}${ownerFilter} ORDER BY name`).all(...params, ...ownerParams) as ExerciseLibrary[];
+    // Search in both name and search_tags
+    const conditions = words.map(() => `(LOWER(name) LIKE ? OR LOWER(COALESCE(search_tags, '')) LIKE ?)`).join(" AND ");
+    const params = words.flatMap(w => [`%${w}%`, `%${w}%`]);
+    return sqlite.prepare(`SELECT ${cols} FROM exercise_library WHERE active = 1 AND ${conditions}${ownerFilter} ORDER BY name`).all(...params, ...ownerParams) as ExerciseLibrary[];
   }
-  // Get ALL exercises (including inactive) for admin
+  // Get ALL exercises (including inactive) for settings
   getAllExerciseLibrary(ownerId?: number): ExerciseLibrary[] {
+    const cols = `id, name, search_tags AS searchTags, active, weight_type AS weightType, owner_id AS ownerId`;
     if (ownerId != null) {
-      return db.select().from(exerciseLibrary).where(eq(exerciseLibrary.ownerId, ownerId)).all();
+      return sqlite.prepare(`SELECT ${cols} FROM exercise_library WHERE owner_id = ? ORDER BY name`).all(ownerId) as ExerciseLibrary[];
     }
-    return db.select().from(exerciseLibrary).all();
+    return sqlite.prepare(`SELECT ${cols} FROM exercise_library ORDER BY name`).all() as ExerciseLibrary[];
   }
   addToExerciseLibrary(name: string, ownerId?: number): ExerciseLibrary | undefined {
     // Case-insensitive check for existing with same name and owner
@@ -461,6 +465,9 @@ export class SqliteStorage {
   }
   updateExerciseLibraryWeightType(id: number, weightType: string): void {
     sqlite.prepare("UPDATE exercise_library SET weight_type = ? WHERE id = ?").run(weightType, id);
+  }
+  updateExerciseLibraryTags(id: number, tags: string): void {
+    sqlite.prepare("UPDATE exercise_library SET search_tags = ? WHERE id = ?").run(tags, id);
   }
   renameExerciseInLibrary(id: number, oldName: string, newName: string): void {
     // Update library entry

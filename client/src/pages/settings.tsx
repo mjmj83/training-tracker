@@ -9,9 +9,11 @@ import type { ExerciseLibrary } from "@shared/schema";
 
 export default function SettingsPage() {
   const [newName, setNewName] = useState("");
+  const [newTags, setNewTags] = useState("");
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingTags, setEditingTags] = useState("");
 
   const { data: exercises = [] } = useQuery<ExerciseLibrary[]>({
     queryKey: ["/api/exercise-library/all"],
@@ -19,10 +21,19 @@ export default function SettingsPage() {
   });
 
   const addExercise = useMutation({
-    mutationFn: (name: string) => apiRequest("POST", "/api/exercise-library", { name }),
+    mutationFn: (data: { name: string; searchTags: string }) => apiRequest("POST", "/api/exercise-library", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exercise-library/all"] });
       setNewName("");
+      setNewTags("");
+    },
+  });
+
+  const updateTags = useMutation({
+    mutationFn: (data: { id: number; searchTags: string }) =>
+      apiRequest("PATCH", `/api/exercise-library/${data.id}`, { searchTags: data.searchTags }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/exercise-library/all"] });
     },
   });
 
@@ -55,7 +66,11 @@ export default function SettingsPage() {
   });
 
   const filtered = exercises
-    .filter(e => !search || e.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(e => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return e.name.toLowerCase().includes(q) || ((e as any).searchTags || "").toLowerCase().includes(q);
+    })
     .sort((a, b) => {
       if (a.active !== b.active) return b.active - a.active;
       return a.name.localeCompare(b.name);
@@ -65,8 +80,16 @@ export default function SettingsPage() {
   const inactiveCount = exercises.filter(e => !e.active).length;
 
   const handleRename = (ex: ExerciseLibrary) => {
-    if (editingName.trim() && editingName.trim() !== ex.name) {
+    const nameChanged = editingName.trim() && editingName.trim() !== ex.name;
+    const tagsChanged = editingTags !== ((ex as any).searchTags || "");
+    if (nameChanged) {
       renameExercise.mutate({ id: ex.id, oldName: ex.name, name: editingName.trim() });
+    }
+    if (tagsChanged) {
+      updateTags.mutate({ id: ex.id, searchTags: editingTags });
+    }
+    if (!nameChanged && !tagsChanged) {
+      setEditingId(null);
     } else {
       setEditingId(null);
     }
@@ -78,26 +101,35 @@ export default function SettingsPage() {
       <p className="text-sm text-muted-foreground mb-6">Beheer de lijst met beschikbare oefeningen.</p>
 
       {/* Add exercise */}
-      <div className="flex gap-2 mb-4">
+      <div className="space-y-2 mb-4">
+        <div className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nieuwe oefening toevoegen..."
+            className="text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newName.trim()) addExercise.mutate({ name: newName.trim(), searchTags: newTags.trim() });
+            }}
+            data-testid="input-new-library-exercise"
+          />
+          <Button
+            onClick={() => newName.trim() && addExercise.mutate({ name: newName.trim(), searchTags: newTags.trim() })}
+            disabled={!newName.trim()}
+            className="gap-1 shrink-0"
+            data-testid="button-add-library-exercise"
+          >
+            <Plus className="w-4 h-4" />
+            Toevoegen
+          </Button>
+        </div>
         <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nieuwe oefening toevoegen..."
-          className="text-sm"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && newName.trim()) addExercise.mutate(newName.trim());
-          }}
-          data-testid="input-new-library-exercise"
+          value={newTags}
+          onChange={(e) => setNewTags(e.target.value)}
+          placeholder="Zoektermen (komma-gescheiden, bijv. 'chest, press, barbell')"
+          className="text-sm text-muted-foreground"
+          data-testid="input-new-library-tags"
         />
-        <Button
-          onClick={() => newName.trim() && addExercise.mutate(newName.trim())}
-          disabled={!newName.trim()}
-          className="gap-1 shrink-0"
-          data-testid="button-add-library-exercise"
-        >
-          <Plus className="w-4 h-4" />
-          Toevoegen
-        </Button>
       </div>
 
       {/* Search */}
@@ -133,7 +165,7 @@ export default function SettingsPage() {
               data-testid={`library-exercise-${ex.id}`}
             >
               {editingId === ex.id ? (
-                <div className="flex items-center gap-2 flex-1">
+                <div className="flex flex-col gap-1 flex-1">
                   <Input
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
@@ -141,21 +173,39 @@ export default function SettingsPage() {
                       if (e.key === "Enter") handleRename(ex);
                       if (e.key === "Escape") setEditingId(null);
                     }}
-                    onBlur={() => handleRename(ex)}
                     className="h-8 text-sm"
                     autoFocus
+                    placeholder="Naam"
                     data-testid={`input-rename-${ex.id}`}
+                  />
+                  <Input
+                    value={editingTags}
+                    onChange={(e) => setEditingTags(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRename(ex);
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    onBlur={() => handleRename(ex)}
+                    className="h-7 text-xs text-muted-foreground"
+                    placeholder="Zoektermen (komma-gescheiden)"
+                    data-testid={`input-tags-${ex.id}`}
                   />
                 </div>
               ) : (
                 <>
-                  <span className={`flex-1 text-sm ${!ex.active ? "line-through" : ""}`}>
-                    {ex.name}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-sm ${!ex.active ? "line-through" : ""}`}>
+                      {ex.name}
+                    </span>
+                    {(ex as any).searchTags && (
+                      <p className="text-[10px] text-muted-foreground/60 truncate">{(ex as any).searchTags}</p>
+                    )}
+                  </div>
                   <button
                     onClick={() => {
                       setEditingId(ex.id);
                       setEditingName(ex.name);
+                      setEditingTags((ex as any).searchTags || "");
                     }}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity p-0.5"
                     data-testid={`button-rename-${ex.id}`}

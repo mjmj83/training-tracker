@@ -111,6 +111,7 @@ export type WeightLog = typeof weightLogs.$inferSelect;
 export const exerciseLibrary = sqliteTable("exercise_library", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
+  searchTags: text("search_tags").default(""), // comma-separated search terms
   active: integer("active").notNull().default(1), // 1 = active, 0 = inactive
   weightType: text("weight_type").notNull().default("weighted"), // 'weighted' | 'reps_only'
   ownerId: integer("owner_id"), // user who owns this library entry

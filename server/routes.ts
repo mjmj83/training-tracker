@@ -277,9 +277,12 @@ export function registerRoutes(server: Server, app: Express): void {
   });
   app.post("/api/exercise-library", (req, res) => {
     const user = (req as any).user;
-    const { name } = req.body;
+    const { name, searchTags } = req.body;
     if (!name) return res.status(400).json({ error: "Name required" });
     const ex = storage.addToExerciseLibrary(name, user.id);
+    if (ex && searchTags !== undefined) {
+      storage.updateExerciseLibraryTags(ex.id, searchTags);
+    }
     res.json(ex);
   });
   app.patch("/api/exercise-library/:id", (req, res) => {
@@ -292,6 +295,9 @@ export function registerRoutes(server: Server, app: Express): void {
     }
     if (req.body.weightType !== undefined) {
       storage.updateExerciseLibraryWeightType(id, req.body.weightType);
+    }
+    if (req.body.searchTags !== undefined) {
+      storage.updateExerciseLibraryTags(id, req.body.searchTags);
     }
     res.json({ ok: true });
   });
