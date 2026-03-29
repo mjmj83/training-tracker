@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon, Search, Check, Upload } from "lucide-react";
+import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon, Search, Check, Upload, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -113,12 +113,24 @@ export default function ExerciseRow({
 
   const dragOverClass = isDragOver ? "ring-2 ring-primary ring-inset" : "";
 
-  // Inline helper to render a settings badge with label above
-  const renderBadge = (label: string, value: string | number, onChange: (v: string) => void, onFieldBlur: () => void, field: string, opts?: { type?: string; inputWidth?: string; min?: number; placeholder?: string }) => {
-    const { type, inputWidth = "w-8", min, placeholder } = opts || {};
+  // Inline helper to render a settings badge with label above + optional tooltip
+  const renderBadge = (label: string, value: string | number, onChange: (v: string) => void, onFieldBlur: () => void, field: string, opts?: { type?: string; inputWidth?: string; min?: number; placeholder?: string; tip?: string }) => {
+    const { type, inputWidth = "w-8", min, placeholder, tip } = opts || {};
     return (
       <div className="flex flex-col items-center gap-0" key={field}>
-        <span className="text-[9px] text-muted-foreground/60 leading-tight">{label}</span>
+        {tip ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[9px] text-muted-foreground/60 leading-tight flex items-center gap-0.5 cursor-help">
+                {label}
+                <Info className="w-2 h-2" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[220px] text-xs">{tip}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className="text-[9px] text-muted-foreground/60 leading-tight">{label}</span>
+        )}
         {readOnly ? (
           <span className="text-[13px] font-medium">{value || "—"}</span>
         ) : (
@@ -180,11 +192,11 @@ export default function ExerciseRow({
 
         {/* Line 2: Settings badges */}
         <div className="flex gap-2 items-center mt-2">
-          {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { type: "number", inputWidth: "w-10", min: 1 })}
-          {renderBadge("reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-12", placeholder: "10" })}
-          {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-10", placeholder: "—" })}
-          {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { type: "number", inputWidth: "w-10", min: 5 })}
-          {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-8", placeholder: "—" })}
+          {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { type: "number", inputWidth: "w-10", min: 1, tip: "Set range, bijv. 2 of 3-4" })}
+          {renderBadge("reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-12", placeholder: "10", tip: "Rep range, bijv. 10 of 10-15" })}
+          {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-10", placeholder: "—", tip: "Elk getal = seconden. Bijv. 3010: 3s zakken, 0s pauze onder, 1s omhoog, 0s rust boven" })}
+          {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { type: "number", inputWidth: "w-10", min: 5, tip: "Seconden rust tussen de sets" })}
+          {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-8", placeholder: "—", tip: "Reps In Reserve range, bijv. 2 of 0-1" })}
         </div>
 
         {/* Line 3: Notes — always shown */}
