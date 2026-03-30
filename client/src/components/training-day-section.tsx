@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, Fragment, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, ChevronDown, ChevronRight, Settings, ArrowUp, ArrowDown, Lock, Unlock } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Settings, ArrowUp, ArrowDown, Lock, Unlock, Play } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -233,6 +233,14 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
             {day.name}
           </span>
         )}
+        <button
+          onClick={() => window.open(`/#/train/${monthId}/${day.id}`, "_blank", "width=420,height=750")}
+          className="p-1 text-primary/70 hover:text-primary transition-colors"
+          title="Train Now"
+          data-testid={`button-train-now-list-${day.id}`}
+        >
+          <Play className="w-3.5 h-3.5 fill-current" />
+        </button>
         {!readOnly && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

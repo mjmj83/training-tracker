@@ -15,10 +15,20 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import AdminPage from "@/pages/admin";
 import AccountPage from "@/pages/account";
+import TrainNowPage from "@/pages/train-now";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
+
+/** Renders Train Now fullscreen (no sidebar) or the normal app shell */
+function TrainNowRouter({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  if (location.startsWith("/train/")) {
+    return <TrainNowPage />;
+  }
+  return <>{children}</>;
+}
 
 function ProtectedSettingsPage() {
   const isTrainer = useIsTrainer();
@@ -64,17 +74,19 @@ function AuthenticatedApp() {
 
   return (
     <Router hook={useHashLocation}>
-      <SidebarProvider style={style as React.CSSProperties}>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0">
-            <main className="flex-1 overflow-auto">
-              <AppRouter />
-            </main>
-            <PerplexityAttribution />
+      <TrainNowRouter>
+        <SidebarProvider style={style as React.CSSProperties}>
+          <div className="flex h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 min-w-0">
+              <main className="flex-1 overflow-auto">
+                <AppRouter />
+              </main>
+              <PerplexityAttribution />
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </TrainNowRouter>
     </Router>
   );
 }

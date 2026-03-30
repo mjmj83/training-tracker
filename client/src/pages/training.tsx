@@ -1,7 +1,7 @@
 import { useSelectedClient, useSelectedMonth, getViewMode, saveViewMode } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid, ClipboardList } from "lucide-react";
+import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid, ClipboardList, Play } from "lucide-react";
 import OverviewDialog from "@/components/overview-dialog";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import ThemePicker from "@/components/theme-picker";
@@ -339,18 +339,29 @@ export default function TrainingPage() {
               {/* Tab bar */}
               <div className="flex items-center gap-0.5 mb-2 overflow-x-auto">
                 {sortedDays.map(day => (
-                  <button
-                    key={day.id}
-                    onClick={() => setActiveTabDay(day.id)}
-                    className={`px-3 py-1.5 text-xs rounded-md transition-colors whitespace-nowrap ${
-                      activeDayId === day.id
-                        ? "bg-primary/10 text-foreground font-medium border border-primary/20"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    }`}
-                    data-testid={`tab-day-${day.id}`}
-                  >
-                    {day.name}
-                  </button>
+                  <div key={day.id} className="flex items-center">
+                    <button
+                      onClick={() => setActiveTabDay(day.id)}
+                      className={`px-3 py-1.5 text-xs rounded-md transition-colors whitespace-nowrap ${
+                        activeDayId === day.id
+                          ? "bg-primary/10 text-foreground font-medium border border-primary/20"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                      data-testid={`tab-day-${day.id}`}
+                    >
+                      {day.name}
+                    </button>
+                    {activeDayId === day.id && (
+                      <button
+                        onClick={() => window.open(`/#/train/${monthId}/${day.id}`, "_blank", "width=420,height=750")}
+                        className="p-1 ml-0.5 text-primary hover:text-primary/80 transition-colors"
+                        title="Train Now"
+                        data-testid={`button-train-now-${day.id}`}
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
               {/* Active day */}
