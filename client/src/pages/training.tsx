@@ -15,6 +15,7 @@ import { useUndoRedo } from "@/lib/undo-redo";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month, Client, AbcMeasurement } from "@shared/schema";
 import { useEffect, useCallback, useState, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery as useQueryAuto } from "@tanstack/react-query";
 import { Link } from "wouter";
 
@@ -33,6 +34,7 @@ export default function TrainingPage() {
   const { canUndo, canRedo, undo, redo, pushSnapshot, undoCount, redoCount } = useUndoRedo(monthId);
   const isTrainer = useIsTrainer();
   const [bfBannerDismissed, setBfBannerDismissed] = useState(false);
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<"list" | "tabs">(getViewMode);
   const [activeTabDay, setActiveTabDay] = useState<number | null>(null);
   const [showOverview, setShowOverview] = useState(false);
@@ -313,6 +315,7 @@ export default function TrainingPage() {
             onBeforeChange={pushSnapshot}
             readOnly={!isTrainer}
             hideHeader={hideHeader}
+            defaultCollapsed={isMobile && viewMode === "list"}
             canMoveDayUp={idx > 0}
             canMoveDayDown={idx < sortedDays.length - 1}
             onMoveDayUp={async () => {

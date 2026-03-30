@@ -80,7 +80,7 @@ function AuthenticatedApp() {
           <div className="flex h-screen w-full">
             <AppSidebar />
             <div className="flex flex-col flex-1 min-w-0">
-              <main className="flex-1 overflow-auto pb-16 md:pb-0">
+              <main className="flex-1 overflow-auto pb-[4.5rem] md:pb-0">
                 <AppRouter />
               </main>
               <div className="hidden md:block">

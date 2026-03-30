@@ -25,10 +25,11 @@ interface Props {
   canMoveDayUp?: boolean;
   canMoveDayDown?: boolean;
   hideHeader?: boolean;
+  defaultCollapsed?: boolean;
 }
 
-export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange, readOnly = false, onMoveDayUp, onMoveDayDown, canMoveDayUp = false, canMoveDayDown = false, hideHeader = false }: Props) {
-  const [isOpen, setIsOpen] = useState(true);
+export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange, readOnly = false, onMoveDayUp, onMoveDayDown, canMoveDayUp = false, canMoveDayDown = false, hideHeader = false, defaultCollapsed = false }: Props) {
+  const [isOpen, setIsOpen] = useState(!defaultCollapsed);
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(day.name);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
