@@ -15,6 +15,7 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import AdminPage from "@/pages/admin";
 import AccountPage from "@/pages/account";
+import OverviewPage from "@/pages/overview";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
@@ -35,6 +36,7 @@ function AppRouter() {
       <Route path="/abc" component={AbcPage} />
       <Route path="/charts" component={ChartsPage} />
       <Route path="/charts/:exerciseName" component={ChartsPage} />
+      <Route path="/overview" component={OverviewPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/account" component={AccountPage} />
       <Route component={NotFound} />
