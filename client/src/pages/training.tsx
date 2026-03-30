@@ -173,7 +173,7 @@ export default function TrainingPage() {
   };
 
   return (
-    <div className="p-4 space-y-2">
+    <div className="flex flex-col h-full md:h-auto md:block p-4 md:space-y-2 gap-2 md:gap-0">
       {/* Body fat reminder banner */}
       {bfReminderNeeded && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-4 py-3 flex items-start gap-2 text-sm">
@@ -206,12 +206,13 @@ export default function TrainingPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
-        <SidebarTrigger data-testid="button-sidebar-toggle" />
+      <div className="flex items-center gap-2 pb-2 border-b border-border mb-2 shrink-0">
+        {/* Desktop only: sidebar trigger + overview */}
+        <SidebarTrigger className="hidden md:flex" data-testid="button-sidebar-toggle" />
         <MonthSwitcher readOnly={!isTrainer} />
         <button
           onClick={() => setShowOverview(true)}
-          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="hidden md:flex p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           title="Overzicht"
           data-testid="button-overview"
         >
@@ -243,7 +244,7 @@ export default function TrainingPage() {
             >
               <Undo2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Undo</span>
-              {undoCount > 0 && <span className="text-muted-foreground">({undoCount})</span>}
+              {undoCount > 0 && <span className="text-muted-foreground hidden sm:inline">({undoCount})</span>}
             </Button>
             <Button
               size="sm"
@@ -256,13 +257,14 @@ export default function TrainingPage() {
             >
               <Redo2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Redo</span>
-              {redoCount > 0 && <span className="text-muted-foreground">({redoCount})</span>}
+              {redoCount > 0 && <span className="text-muted-foreground hidden sm:inline">({redoCount})</span>}
             </Button>
+            {/* Desktop only: save + export */}
             <Button
               size="sm"
               variant="outline"
               onClick={() => saveState.mutate()}
-              className="h-7 px-2 text-xs gap-1"
+              className="hidden md:flex h-7 px-2 text-xs gap-1"
               data-testid="button-save"
             >
               <Save className="w-3.5 h-3.5" />
@@ -287,7 +289,7 @@ export default function TrainingPage() {
                   toast({ title: "Fout", description: "Export mislukt", variant: "destructive" });
                 }
               }}
-              className="h-7 px-2 text-xs gap-1"
+              className="hidden md:flex h-7 px-2 text-xs gap-1"
               data-testid="button-export"
               title="Exporteer alle trainingsblokken naar Excel"
             >
@@ -297,16 +299,20 @@ export default function TrainingPage() {
           </div>
         )}
         {!isTrainer && <div className="flex-1" />}
-        <ThemePicker />
+        {/* Desktop only: theme picker */}
+        <div className="hidden md:block">
+          <ThemePicker />
+        </div>
       </div>
 
+      <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible md:flex-none">
       {(() => {
         const sortedDays = trainingDays.sort((a, b) => a.sortOrder - b.sortOrder);
         const activeDayId = activeTabDay && sortedDays.find(d => d.id === activeTabDay) ? activeTabDay : sortedDays[0]?.id ?? null;
 
         const renderDay = (day: typeof sortedDays[0], idx: number, hideHeader = false) => (
           <TrainingDaySection
-            key={day.id}
+            key={`${day.id}-${isMobile ? "m" : "d"}`}
             day={day}
             exercises={day.exercises}
             weekDates={weekDates.filter((wd) => wd.trainingDayId === day.id)}
@@ -388,6 +394,7 @@ export default function TrainingPage() {
           </>
         );
       })()}
+      </div>
 
       <OverviewDialog open={showOverview} onOpenChange={setShowOverview} monthId={monthId} />
     </div>

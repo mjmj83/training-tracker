@@ -1,11 +1,15 @@
 import { Link, useLocation } from "wouter";
-import { Dumbbell, BarChart3, NotebookPen, Calculator, Menu, Settings, LogOut, Users, Check, Shield, ChevronRight } from "lucide-react";
+import { Dumbbell, BarChart3, NotebookPen, Calculator, Menu, Settings, LogOut, Users, Check, Shield, ChevronRight, Download, Palette, ClipboardList } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useSelectedClient } from "@/lib/state";
+import { apiRequest } from "@/lib/queryClient";
+import { useSelectedClient, useSelectedMonth } from "@/lib/state";
 import { useAuth } from "@/lib/auth";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
+import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ThemePicker from "@/components/theme-picker";
+import OverviewDialog from "@/components/overview-dialog";
 import { useState } from "react";
 import type { Client } from "@shared/schema";
 
@@ -21,8 +25,11 @@ export default function MobileNav() {
   const { user, logout } = useAuth();
   const isTrainer = useIsTrainer();
   const { clientId, setClientId } = useSelectedClient();
+  const { monthId } = useSelectedMonth();
+  const { toast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [showOverview, setShowOverview] = useState(false);
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -91,6 +98,46 @@ export default function MobileNav() {
                 </div>
               )}
 
+              {/* Quick actions */}
+              <div className="border-t border-border mt-1 pt-1 space-y-0.5">
+                <button
+                  onClick={() => { setMenuOpen(false); setShowOverview(true); }}
+                  className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-sm hover:bg-accent transition-colors"
+                  data-testid="mobile-menu-overview"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Overzicht
+                </button>
+                <button
+                  onClick={async () => {
+                    setMenuOpen(false);
+                    try {
+                      const res = await apiRequest("GET", `/api/clients/${clientId}/export`);
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      const disposition = res.headers.get("content-disposition");
+                      const match = disposition?.match(/filename="(.+)"/);
+                      a.download = match?.[1] || "Training Export.xlsx";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch { toast({ title: "Fout", description: "Export mislukt", variant: "destructive" }); }
+                  }}
+                  className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-sm hover:bg-accent transition-colors"
+                  data-testid="mobile-menu-export"
+                >
+                  <Download className="w-4 h-4" />
+                  Exporteren
+                </button>
+                <div className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2">
+                  <Palette className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm flex-1">Thema</span>
+                  <ThemePicker />
+                </div>
+              </div>
+
+              {/* Navigation */}
               <div className="border-t border-border mt-1 pt-1 space-y-0.5">
                 {isTrainer && (
                   <Link href="/settings">
@@ -166,6 +213,9 @@ export default function MobileNav() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Overview dialog */}
+      <OverviewDialog open={showOverview} onOpenChange={setShowOverview} monthId={monthId} />
     </>
   );
 }
