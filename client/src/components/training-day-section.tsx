@@ -262,11 +262,10 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
             <tbody>
               {/* Week headers row — combined with first group label */}
               <tr>
-                <td className="text-left py-1.5 px-2 font-medium text-muted-foreground whitespace-nowrap text-xs align-bottom">
-                  Oefening
-                  {/* Show first group label inline if the first group is grouped */}
-                  {groups.length > 0 && groups[0].groupId !== null && groups[0].exercises.length > 1 && (
-                    <div className="font-normal mt-1">
+                <td className="text-left py-1.5 px-2 align-bottom">
+                  {/* Show first group label if the first group is grouped */}
+                  {groups.length > 0 && groups[0].groupId !== null && groups[0].exercises.length > 1 ? (
+                    <div>
                       {!readOnly && groups.length > 1 ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -288,7 +287,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         </span>
                       )}
                     </div>
-                  )}
+                  ) : null}
                 </td>
                 {weeks.map((w) => (
                   <td
