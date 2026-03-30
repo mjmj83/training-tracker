@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import ConfirmDialog from "@/components/confirm-dialog";
 import ScrollPicker from "@/components/scroll-picker";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 
@@ -120,6 +121,7 @@ export default function TrainNowPage() {
   const [notes, setNotes] = useState("");
   const [skipped, setSkipped] = useState(false);
   const [savedData, setSavedData] = useState<Record<string, { weight: string; reps: string; skipped: boolean; notes: string }>>({});
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const step = steps[currentStep];
   const wk = weekNumber;
@@ -269,13 +271,7 @@ export default function TrainNowPage() {
                   <Button
                     variant="outline"
                     className="w-full h-11 text-sm gap-2 text-destructive hover:text-destructive"
-                    onClick={async () => {
-                      await apiRequest("POST", "/api/weight-logs/clear-week", { trainingDayId: dayId, weekNumber });
-                      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
-                      setSavedData({});
-                      setCurrentStep(0);
-                      setPhase("training");
-                    }}
+                    onClick={() => setShowClearConfirm(true)}
                   >
                     Wissen en opnieuw beginnen
                   </Button>
@@ -294,6 +290,20 @@ export default function TrainNowPage() {
             </Button>
           </div>
         )}
+      <ConfirmDialog
+        open={showClearConfirm}
+        onOpenChange={setShowClearConfirm}
+        title="Weet je het zeker?"
+        description={`Alle ingevulde data van Week ${weekNumber} wordt gewist. Dit kan niet ongedaan worden.`}
+        onConfirm={async () => {
+          await apiRequest("POST", "/api/weight-logs/clear-week", { trainingDayId: dayId, weekNumber });
+          queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+          setSavedData({});
+          setCurrentStep(0);
+          setShowClearConfirm(false);
+          setPhase("training");
+        }}
+      />
       </div>
     );
   }
