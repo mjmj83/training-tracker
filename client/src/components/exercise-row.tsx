@@ -36,13 +36,14 @@ interface Props {
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   onSwapSupersetOrder?: () => void;
+  lockedWeeks?: Set<number>;
 }
 
 export default function ExerciseRow({
   exercise, weightLogs, monthId, weekCount,
   isSuperset, isFirstInSuperset, isLastInSuperset,
   isDragOver, onDragStart, onDragOver, onDragLeave, onDrop, onBeforeChange,
-  hoveredWeek, onWeekHover,
+  hoveredWeek, onWeekHover, lockedWeeks,
   readOnly = false,
   onMoveUp, onMoveDown, canMoveUp = false, canMoveDown = false,
   onSwapSupersetOrder,
@@ -241,6 +242,8 @@ export default function ExerciseRow({
       {/* Weight columns */}
       {weeks.map((weekNum, idx) => {
         const isLastWeek = idx === weeks.length - 1;
+        const weekLocked = lockedWeeks?.has(weekNum) ?? false;
+        const cellReadOnly = readOnly || weekLocked;
         const needsRightBorder = isLastWeek && readOnly;
         return (
         <td
@@ -265,7 +268,7 @@ export default function ExerciseRow({
                   initialNotes={log?.notes ?? ""}
                   monthId={monthId}
                   onBeforeChange={onBeforeChange}
-                  readOnly={readOnly}
+                  readOnly={cellReadOnly}
                   previousWeight={prevLog?.weight}
                   previousReps={prevLog?.reps}
                   weightType={weightType}

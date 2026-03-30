@@ -199,6 +199,8 @@ try { sqlite.exec("ALTER TABLE exercises ADD COLUMN image_url TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN tracking_type TEXT NOT NULL DEFAULT 'reps'"); } catch {}
 // Migration: add skipped column to weight_logs
 try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0"); } catch {}
+// Migration: add locked column to week_dates
+try { sqlite.exec("ALTER TABLE week_dates ADD COLUMN locked INTEGER NOT NULL DEFAULT 0"); } catch {}
 
 // Cleanup: remove duplicate exercise library entries (keep lowest id per name+owner)
 {
@@ -407,6 +409,13 @@ export class SqliteStorage {
     )).get();
     if (existing) return db.update(weekDates).set({ date: data.date }).where(eq(weekDates.id, existing.id)).returning().get();
     return db.insert(weekDates).values(data).returning().get();
+  }
+  setWeekLock(data: { monthId: number; trainingDayId: number; weekNumber: number; locked: number }): WeekDate {
+    const existing = db.select().from(weekDates).where(and(
+      eq(weekDates.monthId, data.monthId), eq(weekDates.trainingDayId, data.trainingDayId), eq(weekDates.weekNumber, data.weekNumber)
+    )).get();
+    if (existing) return db.update(weekDates).set({ locked: data.locked }).where(eq(weekDates.id, existing.id)).returning().get();
+    return db.insert(weekDates).values({ monthId: data.monthId, trainingDayId: data.trainingDayId, weekNumber: data.weekNumber, locked: data.locked }).returning().get();
   }
 
   // Weight Logs

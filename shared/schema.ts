@@ -86,6 +86,7 @@ export const weekDates = sqliteTable("week_dates", {
   trainingDayId: integer("training_day_id").notNull().references(() => trainingDays.id),
   weekNumber: integer("week_number").notNull(), // 1-4
   date: text("date"), // ISO date string e.g. "2026-03-05"
+  locked: integer("locked").notNull().default(0), // 0 = unlocked, 1 = locked
 });
 
 export const insertWeekDateSchema = createInsertSchema(weekDates).omit({ id: true });

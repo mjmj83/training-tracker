@@ -227,6 +227,10 @@ export function registerRoutes(server: Server, app: Express): void {
     const { monthId, trainingDayId, weekNumber, date } = req.body;
     res.json(storage.upsertWeekDate({ monthId, trainingDayId, weekNumber, date }));
   });
+  app.post("/api/week-dates/toggle-lock", (req, res) => {
+    const { monthId, trainingDayId, weekNumber, locked } = req.body;
+    res.json(storage.setWeekLock({ monthId, trainingDayId, weekNumber, locked: locked ? 1 : 0 }));
+  });
 
   // ============= WEIGHT LOGS =============
   // TODO: Could tighten by verifying nested resources belong to an accessible client

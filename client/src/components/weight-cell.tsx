@@ -81,13 +81,28 @@ export default function WeightCell({
     }
   };
 
+  // Format display value for locked/readOnly cells
+  const displayValue = (() => {
+    if (skipped) return "skip";
+    const hasW = weight !== "";
+    const hasR = reps !== "";
+    if (!isRepsOnly && hasW && hasR) return `${weight} x ${reps}`;
+    if (!isRepsOnly && hasW) return weight;
+    if (hasR) return reps;
+    return "";
+  })();
+
   return (
     <>
       <div
-        className={`group/cell flex items-center justify-center gap-0.5 rounded px-1 py-0.5 relative ${skipped ? "bg-muted/30" : "bg-muted/60"}`}
+        className={`group/cell flex items-center justify-center gap-0.5 rounded px-1 py-0.5 relative ${readOnly ? "" : skipped ? "bg-muted/30" : "bg-muted/60"}`}
         data-testid={`weight-cell-${exerciseId}-w${weekNumber}-s${setNumber}`}
       >
-        {skipped ? (
+        {readOnly ? (
+          <span className={`text-sm tabular-nums font-mono text-center ${skipped ? "text-muted-foreground/40 line-through italic text-xs" : !displayValue ? "text-muted-foreground/20" : ""}`}>
+            {skipped ? "skip" : displayValue || "\u00b7"}
+          </span>
+        ) : skipped ? (
           <span className="text-xs text-muted-foreground/50 italic w-full text-center">skip</span>
         ) : (
           <>

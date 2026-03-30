@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback, Fragment } from "react";
+import { useState, useRef, useCallback, Fragment, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, ChevronDown, ChevronRight, Settings, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Settings, ArrowUp, ArrowDown, Lock, Unlock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -34,6 +35,25 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
   const dragSourceId = useRef<number | null>(null);
   const [showDeleteDayConfirm, setShowDeleteDayConfirm] = useState(false);
   const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
+
+  // Compute locked weeks from weekDates
+  const lockedWeeks = useMemo(() => {
+    const set = new Set<number>();
+    for (const wd of weekDates) {
+      if (wd.trainingDayId === day.id && wd.locked) set.add(wd.weekNumber);
+    }
+    return set;
+  }, [weekDates, day.id]);
+
+  const toggleLock = useMutation({
+    mutationFn: (data: { weekNumber: number; locked: boolean }) =>
+      apiRequest("POST", "/api/week-dates/toggle-lock", {
+        monthId, trainingDayId: day.id, weekNumber: data.weekNumber, locked: data.locked,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+    },
+  });
 
   const updateDay = useMutation({
     mutationFn: (data: { name: string }) =>
@@ -289,25 +309,50 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                     </div>
                   ) : null}
                 </td>
-                {weeks.map((w) => (
-                  <td
-                    key={w}
-                    className={`text-center py-1.5 px-1 font-medium text-muted-foreground w-[110px] max-w-[110px] text-xs align-bottom transition-colors ${hoveredWeek === w ? "bg-primary/10" : ""}`}
-                    onMouseEnter={() => setHoveredWeek(w)}
-                    onMouseLeave={() => setHoveredWeek(null)}
-                  >
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span>Week {w}</span>
-                      <WeekDateInput
-                        monthId={monthId}
-                        trainingDayId={day.id}
-                        weekNumber={w}
-                        weekDates={weekDates}
-                        readOnly={readOnly}
-                      />
-                    </div>
-                  </td>
-                ))}
+                {weeks.map((w) => {
+                  const isLocked = lockedWeeks.has(w);
+                  return (
+                    <td
+                      key={w}
+                      className={`text-center py-1.5 px-1 font-medium text-muted-foreground w-[110px] max-w-[110px] text-xs align-bottom transition-colors group/weekhdr ${hoveredWeek === w ? "bg-primary/10" : ""}`}
+                      onMouseEnter={() => setHoveredWeek(w)}
+                      onMouseLeave={() => setHoveredWeek(null)}
+                    >
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex items-center gap-1">
+                          <span>Week {w}</span>
+                          {!readOnly && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => toggleLock.mutate({ weekNumber: w, locked: !isLocked })}
+                                  className={`transition-opacity ${
+                                    isLocked
+                                      ? "text-primary opacity-100"
+                                      : "text-muted-foreground/30 opacity-0 group-hover/weekhdr:opacity-100 hover:text-muted-foreground"
+                                  }`}
+                                  data-testid={`button-lock-w${w}-day${day.id}`}
+                                >
+                                  {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                {isLocked ? "Week ontgrendelen" : "Week vergrendelen"}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        <WeekDateInput
+                          monthId={monthId}
+                          trainingDayId={day.id}
+                          weekNumber={w}
+                          weekDates={weekDates}
+                          readOnly={readOnly || isLocked}
+                        />
+                      </div>
+                    </td>
+                  );
+                })}
                 {!readOnly && <td className="w-8"></td>}
                 <td className="w-0 p-0 border-0"></td>
               </tr>
@@ -377,6 +422,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         hoveredWeek={hoveredWeek}
                         onWeekHover={setHoveredWeek}
                         readOnly={readOnly}
+                        lockedWeeks={lockedWeeks}
                         onMoveUp={() => moveExercise(ex.id, 'up')}
                         onMoveDown={() => moveExercise(ex.id, 'down')}
                         canMoveUp={globalIdx > 0}
