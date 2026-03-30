@@ -244,6 +244,11 @@ export function registerRoutes(server: Server, app: Express): void {
     const { exerciseId, weekNumber, setNumber, weight, reps, notes, skipped } = req.body;
     res.json(storage.upsertWeightLog({ exerciseId, weekNumber, setNumber, weight, reps, skipped: skipped ?? 0, notes: notes ?? "" }));
   });
+  app.post("/api/weight-logs/clear-week", (req, res) => {
+    const { trainingDayId, weekNumber } = req.body;
+    storage.clearWeekLogs(trainingDayId, weekNumber);
+    res.json({ ok: true });
+  });
 
   // ============= EXERCISE LAST CONFIG =============
   // Get the most recently used settings for an exercise name (across all blocks for this client)

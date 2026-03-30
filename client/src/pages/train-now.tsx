@@ -252,14 +252,48 @@ export default function TrainNowPage() {
           <p className="text-xs text-muted-foreground text-center">
             {steps.length} sets · {new Set(steps.map(s => s.exercise.id)).size} oefeningen
           </p>
+
+          {/* Warning if selected week has data */}
+          {(() => {
+            const weekHasData = day.exercises.some(ex =>
+              ex.weightLogs.some(l => l.weekNumber === weekNumber && (l.weight != null || l.reps != null))
+            );
+            if (!weekHasData) return null;
+            return (
+              <div className="w-full max-w-[280px] rounded-lg border border-border bg-muted/30 p-3 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">Er is al data ingevoerd voor deze week.</p>
+                <div className="flex flex-col gap-2">
+                  <Button className="w-full h-11 text-sm gap-2" onClick={() => setPhase("training")}>
+                    Verder gaan
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 text-sm gap-2 text-destructive hover:text-destructive"
+                    onClick={async () => {
+                      await apiRequest("POST", "/api/weight-logs/clear-week", { trainingDayId: dayId, weekNumber });
+                      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+                      setSavedData({});
+                      setCurrentStep(0);
+                      setPhase("training");
+                    }}
+                  >
+                    Wissen en opnieuw beginnen
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
-        <div className="shrink-0 px-4 pb-4">
-          <Button className="w-full h-14 text-lg gap-2" onClick={() => setPhase("training")}>
-            <Play className="w-5 h-5 fill-current" />
-            Start training
-          </Button>
-        </div>
+        {/* Start button — only if no data warning shown */}
+        {!day.exercises.some(ex => ex.weightLogs.some(l => l.weekNumber === weekNumber && (l.weight != null || l.reps != null))) && (
+          <div className="shrink-0 px-4 pb-4">
+            <Button className="w-full h-14 text-lg gap-2" onClick={() => setPhase("training")}>
+              <Play className="w-5 h-5 fill-current" />
+              Start training
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

@@ -436,6 +436,13 @@ export class SqliteStorage {
     return db.insert(weightLogs).values(data).returning().get();
   }
 
+  clearWeekLogs(trainingDayId: number, weekNumber: number): void {
+    const exs = db.select().from(exercises).where(eq(exercises.trainingDayId, trainingDayId)).all();
+    for (const ex of exs) {
+      db.delete(weightLogs).where(and(eq(weightLogs.exerciseId, ex.id), eq(weightLogs.weekNumber, weekNumber))).run();
+    }
+  }
+
   // Exercise Library — fuzzy search (active only, searches name + tags)
   searchExerciseLibrary(query: string, ownerId?: number): ExerciseLibrary[] {
     const ownerFilter = ownerId != null ? ` AND owner_id = ?` : ``;
