@@ -75,6 +75,31 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
+function VolumeTooltip({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0]?.payload;
+  return (
+    <div className="rounded-md border px-3 py-2 text-xs" style={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))" }}>
+      <p className="font-medium mb-1">{label}</p>
+      <p style={{ color: "hsl(var(--chart-2))" }}>Volume: <span className="font-semibold">{data?.volume ?? "—"} kg</span></p>
+      {data?.source && <p className="text-muted-foreground mt-0.5">{data.source}</p>}
+    </div>
+  );
+}
+
+function TotalSecondsTooltip({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0]?.payload;
+  return (
+    <div className="rounded-md border px-3 py-2 text-xs" style={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))" }}>
+      <p className="font-medium mb-1">{label}</p>
+      <p style={{ color: "hsl(var(--chart-2))" }}>Totaal: <span className="font-semibold">{data?.totalSeconds ?? "—"}s</span></p>
+      <p style={{ color: "hsl(var(--muted-foreground))" }}>Sets: <span className="font-semibold">{data?.setCount ?? "—"}</span></p>
+      {data?.source && <p className="text-muted-foreground mt-0.5">{data.source}</p>}
+    </div>
+  );
+}
+
 /** Build chart data points from an array of FullMonthData blocks */
 export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: number | null): { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean; isTimeBased: boolean }[] {
   const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; volume: number; setCount: number; totalSeconds: number; source: string; sortDate: string }[]>();
@@ -427,6 +452,46 @@ export default function ChartsPage() {
               })()}
             </CardContent>
           </Card>
+
+          {/* Volume / Total seconds chart */}
+          {!selectedChart.isTimeBased && (!selectedChart.isRepsOnly || selectedChart.isBodyweight) && selectedChart.data.some((d: any) => d.volume > 0) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Volume Load (kg x reps)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={selectedChart.data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="week" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} domain={["dataMin - 50", "dataMax + 50"]} />
+                    <Tooltip content={<VolumeTooltip />} />
+                    <Line type="monotone" dataKey="volume" stroke="hsl(var(--chart-2))" strokeWidth={2}
+                      dot={{ r: 4, fill: "hsl(var(--chart-2))" }} activeDot={{ r: 6 }} name="Volume (kg)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+          {selectedChart.isTimeBased && selectedChart.data.some((d: any) => d.totalSeconds > 0) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Totaal seconden (alle sets)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={selectedChart.data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="week" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} domain={["dataMin - 10", "dataMax + 10"]} />
+                    <Tooltip content={<TotalSecondsTooltip />} />
+                    <Line type="monotone" dataKey="totalSeconds" stroke="hsl(var(--chart-2))" strokeWidth={2}
+                      dot={{ r: 4, fill: "hsl(var(--chart-2))" }} activeDot={{ r: 6 }} name="Totaal (s)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Detail table */}
           {groupedDetails.length > 0 && (
