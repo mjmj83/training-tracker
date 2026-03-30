@@ -94,17 +94,24 @@ export default function TrainNowPage() {
   const weekCount = fullData?.month?.weekCount ?? 4;
   const weeks = Array.from({ length: weekCount }, (_, i) => i + 1);
 
-  // Find first week that is not fully completed (not all exercises have data)
+  // Find first week that is not locked and not fully completed
   const suggestedWeek = useMemo(() => {
     if (!day || day.exercises.length === 0) return 1;
     for (let w = 1; w <= weekCount; w++) {
+      const isLocked = fullData?.weekDates.some(wd => wd.trainingDayId === dayId && wd.weekNumber === w && wd.locked);
+      if (isLocked) continue;
       const allExercisesHaveData = day.exercises.every(ex =>
         ex.weightLogs.some(l => l.weekNumber === w && (l.weight != null || l.reps != null))
       );
       if (!allExercisesHaveData) return w;
     }
-    return weekCount;
-  }, [day, weekCount]);
+    // All locked or full — return last unlocked week
+    for (let w = weekCount; w >= 1; w--) {
+      const isLocked = fullData?.weekDates.some(wd => wd.trainingDayId === dayId && wd.weekNumber === w && wd.locked);
+      if (!isLocked) return w;
+    }
+    return 1;
+  }, [day, weekCount, fullData]);
 
   // State machine: "pick-week" -> "training" -> "finished"
   const [phase, setPhase] = useState<"pick-week" | "training" | "finished">("pick-week");
@@ -241,7 +248,7 @@ export default function TrainNowPage() {
                   const wd = fullData.weekDates.find(wd2 => wd2.trainingDayId === dayId && wd2.weekNumber === w);
                   const dateStr = wd?.date ? new Date(wd.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) : "";
                   return (
-                    <SelectItem key={w} value={String(w)}>
+                    <SelectItem key={w} value={String(w)} disabled={isLocked}>
                       Week {w}{dateStr ? ` · ${dateStr}` : ""}
                       {isLocked ? " 🔒" : hasData ? " ✓" : ""}
                     </SelectItem>
