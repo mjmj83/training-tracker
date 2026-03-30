@@ -1,7 +1,8 @@
 import { useSelectedClient, useSelectedMonth, getViewMode, saveViewMode } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid } from "lucide-react";
+import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid, ClipboardList } from "lucide-react";
+import OverviewDialog from "@/components/overview-dialog";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import ThemePicker from "@/components/theme-picker";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export default function TrainingPage() {
   const [bfBannerDismissed, setBfBannerDismissed] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "tabs">(getViewMode);
   const [activeTabDay, setActiveTabDay] = useState<number | null>(null);
+  const [showOverview, setShowOverview] = useState(false);
 
   // Fetch clients to get bfReminderEnabled for the selected client
   const { data: clients = [] } = useQuery<Client[]>({
@@ -204,6 +206,14 @@ export default function TrainingPage() {
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
         <SidebarTrigger data-testid="button-sidebar-toggle" />
         <MonthSwitcher readOnly={!isTrainer} />
+        <button
+          onClick={() => setShowOverview(true)}
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title="Overzicht"
+          data-testid="button-overview"
+        >
+          <ClipboardList className="w-4 h-4" />
+        </button>
         <div className="flex-1" />
         {/* View mode toggle */}
         <Button
@@ -363,6 +373,8 @@ export default function TrainingPage() {
           </>
         );
       })()}
+
+      <OverviewDialog open={showOverview} onOpenChange={setShowOverview} monthId={monthId} />
     </div>
   );
 }

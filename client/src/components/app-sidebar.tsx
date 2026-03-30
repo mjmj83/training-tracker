@@ -1,4 +1,4 @@
-import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator, LogOut, KeyRound, Shield, ClipboardList } from "lucide-react";
+import { Users, Plus, Trash2, BarChart3, Dumbbell, Pencil, ChevronsUpDown, Check, NotebookPen, Settings, Calculator, LogOut, KeyRound, Shield } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -338,14 +338,6 @@ export function AppSidebar() {
                   <Link href="/charts">
                     <BarChart3 className="w-4 h-4" />
                     <span>Charts</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/overview"}>
-                  <Link href="/overview">
-                    <ClipboardList className="w-4 h-4" />
-                    <span>Overzicht</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
