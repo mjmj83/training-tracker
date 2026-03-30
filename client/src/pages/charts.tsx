@@ -98,21 +98,25 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
           const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w && !l.skipped);
           if (weekLogs.length === 0) continue;
 
-          const lastSet = weekLogs.reduce((best, l) =>
+          // Filter out logs where both weight and reps are 0 or null (cleared data)
+          const meaningfulLogs = weekLogs.filter(l => (l.weight != null && l.weight > 0) || (l.reps != null && l.reps > 0));
+          if (meaningfulLogs.length === 0) continue;
+
+          const lastSet = meaningfulLogs.reduce((best, l) =>
             l.setNumber > best.setNumber ? l : best
-          , weekLogs[0]);
+          , meaningfulLogs[0]);
 
           // Calculate total volume: sum of (weight * reps) for all sets
           // For bodyweight exercises, use the latest measured bodyweight
           const bwWeight = isBw && latestBodyweight ? latestBodyweight : 0;
-          const volume = weekLogs.reduce((sum, l) => {
+          const volume = meaningfulLogs.reduce((sum, l) => {
             const w2 = isBw ? bwWeight : (l.weight ?? 0);
             const r = l.reps ?? 0;
             return sum + (w2 * r);
           }, 0);
 
           // Total seconds: sum of reps field for all sets (for time-based exercises)
-          const totalSeconds = weekLogs.reduce((sum, l) => sum + (l.reps ?? 0), 0);
+          const totalSeconds = meaningfulLogs.reduce((sum, l) => sum + (l.reps ?? 0), 0);
 
           const weekDate = block.weekDates.find(
             (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
