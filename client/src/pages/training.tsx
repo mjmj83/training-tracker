@@ -271,7 +271,7 @@ export default function TrainingPage() {
 
       {trainingDays
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((day) => (
+        .map((day, idx, sorted) => (
           <TrainingDaySection
             key={day.id}
             day={day}
@@ -281,6 +281,24 @@ export default function TrainingPage() {
             weekCount={weekCount}
             onBeforeChange={pushSnapshot}
             readOnly={!isTrainer}
+            canMoveDayUp={idx > 0}
+            canMoveDayDown={idx < sorted.length - 1}
+            onMoveDayUp={async () => {
+              if (idx <= 0) return;
+              pushSnapshot();
+              const prev = sorted[idx - 1];
+              await apiRequest("PATCH", `/api/training-days/${day.id}`, { sortOrder: prev.sortOrder });
+              await apiRequest("PATCH", `/api/training-days/${prev.id}`, { sortOrder: day.sortOrder });
+              queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+            }}
+            onMoveDayDown={async () => {
+              if (idx >= sorted.length - 1) return;
+              pushSnapshot();
+              const next = sorted[idx + 1];
+              await apiRequest("PATCH", `/api/training-days/${day.id}`, { sortOrder: next.sortOrder });
+              await apiRequest("PATCH", `/api/training-days/${next.id}`, { sortOrder: day.sortOrder });
+              queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+            }}
           />
         ))}
       {isTrainer && (

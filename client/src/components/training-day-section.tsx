@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, Fragment } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Settings, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ExerciseRow from "@/components/exercise-row";
 import AddExerciseRow from "@/components/add-exercise-row";
 import WeekDateInput from "@/components/week-date-input";
@@ -18,9 +19,13 @@ interface Props {
   weekCount: number;
   onBeforeChange: () => void;
   readOnly?: boolean;
+  onMoveDayUp?: () => void;
+  onMoveDayDown?: () => void;
+  canMoveDayUp?: boolean;
+  canMoveDayDown?: boolean;
 }
 
-export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange, readOnly = false }: Props) {
+export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange, readOnly = false, onMoveDayUp, onMoveDayDown, canMoveDayUp = false, canMoveDayDown = false }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(day.name);
@@ -103,6 +108,31 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
     }
   }
 
+  // Move an entire group (superset/triset/giant set) up or down
+  const moveGroup = useCallback(async (groupIdx: number, direction: 'up' | 'down') => {
+    const targetIdx = direction === 'up' ? groupIdx - 1 : groupIdx + 1;
+    if (targetIdx < 0 || targetIdx >= groups.length) return;
+
+    onBeforeChange();
+    const currentGroup = groups[groupIdx];
+    const targetGroup = groups[targetIdx];
+
+    // Collect all sortOrders and reassign
+    const allExercises = [...currentGroup.exercises, ...targetGroup.exercises];
+    const allSortOrders = allExercises.map(e => e.sortOrder).sort((a, b) => a - b);
+
+    const reordered = direction === 'up'
+      ? [...currentGroup.exercises, ...targetGroup.exercises]
+      : [...targetGroup.exercises, ...currentGroup.exercises];
+
+    for (let i = 0; i < reordered.length; i++) {
+      if (reordered[i].sortOrder !== allSortOrders[i]) {
+        await apiRequest("PATCH", `/api/exercises/${reordered[i].id}`, { sortOrder: allSortOrders[i] });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+  }, [groups, monthId, onBeforeChange]);
+
   const handleDragStart = (exerciseId: number) => {
     if (readOnly) return;
     dragSourceId.current = exerciseId;
@@ -182,15 +212,29 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
           </span>
         )}
         {!readOnly && (
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-            onClick={() => setShowDeleteDayConfirm(true)}
-            data-testid={`button-delete-day-${day.id}`}
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground" data-testid={`button-day-menu-${day.id}`}>
+                <Settings className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canMoveDayUp && onMoveDayUp && (
+                <DropdownMenuItem onClick={onMoveDayUp}>
+                  <ArrowUp className="w-4 h-4 mr-2" /> Omhoog verplaatsen
+                </DropdownMenuItem>
+              )}
+              {canMoveDayDown && onMoveDayDown && (
+                <DropdownMenuItem onClick={onMoveDayDown}>
+                  <ArrowDown className="w-4 h-4 mr-2" /> Omlaag verplaatsen
+                </DropdownMenuItem>
+              )}
+              {(canMoveDayUp || canMoveDayDown) && <DropdownMenuSeparator />}
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteDayConfirm(true)}>
+                <Trash2 className="w-4 h-4 mr-2" /> Verwijderen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
@@ -255,10 +299,32 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                       {!isFirstOverall && (
                         <tr><td colSpan={999} className={`${spacerHeight} p-0 border-0`}></td></tr>
                       )}
-                      {/* Group label above the first exercise */}
+                      {/* Group label above the first exercise — clickable for move */}
                       {isGrouped && ei === 0 && (
                         <tr><td colSpan={999} className="p-0 border-0 pb-0.5">
-                          <span className="text-[10px] italic text-muted-foreground/60 pl-2">{groupLabel}</span>
+                          {!readOnly && groups.length > 1 ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="text-[10px] italic text-muted-foreground/60 pl-2 hover:text-muted-foreground transition-colors cursor-pointer">
+                                  {groupLabel}
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                {gi > 0 && (
+                                  <DropdownMenuItem onClick={() => moveGroup(gi, 'up')}>
+                                    <ArrowUp className="w-3.5 h-3.5 mr-2" /> Omhoog verplaatsen
+                                  </DropdownMenuItem>
+                                )}
+                                {gi < groups.length - 1 && (
+                                  <DropdownMenuItem onClick={() => moveGroup(gi, 'down')}>
+                                    <ArrowDown className="w-3.5 h-3.5 mr-2" /> Omlaag verplaatsen
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <span className="text-[10px] italic text-muted-foreground/60 pl-2">{groupLabel}</span>
+                          )}
                         </td></tr>
                       )}
                       <ExerciseRow
