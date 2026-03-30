@@ -32,8 +32,7 @@ function ChartTooltip({ active, payload, label }: any) {
   const data = payload[0]?.payload;
   const isRepsOnly = data?.isRepsOnly;
   const isTimeBased = data?.isTimeBased;
-  const repsLabel = isTimeBased ? "Tijd" : "Reps";
-  const repsUnit = isTimeBased ? "s" : "";
+  const isBodyweight = data?.isBodyweight;
   return (
     <div
       className="rounded-md border px-3 py-2 text-xs"
@@ -43,23 +42,54 @@ function ChartTooltip({ active, payload, label }: any) {
       }}
     >
       <p className="font-medium mb-1">{label}</p>
-      {isRepsOnly ? (
-        <p style={{ color: "hsl(var(--chart-1))" }}>
-          {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
-        </p>
+      {isTimeBased ? (
+        <>
+          <p style={{ color: "hsl(var(--chart-1))" }}>
+            Tijd: <span className="font-semibold">{data?.lastSetReps ?? "—"}s</span>
+          </p>
+          <p style={{ color: "hsl(var(--muted-foreground))" }}>
+            Sets: <span className="font-semibold">{data?.setCount ?? "—"}</span>
+          </p>
+        </>
+      ) : isBodyweight || isRepsOnly ? (
+        <>
+          <p style={{ color: "hsl(var(--chart-1))" }}>
+            Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+          </p>
+          <p style={{ color: "hsl(var(--muted-foreground))" }}>
+            Sets: <span className="font-semibold">{data?.setCount ?? "—"}</span>
+          </p>
+        </>
       ) : (
         <>
           <p style={{ color: "hsl(var(--chart-1))" }}>
             Gewicht: <span className="font-semibold">{data?.lastSetWeight ?? "—"} kg</span>
           </p>
           <p style={{ color: "hsl(var(--muted-foreground))" }}>
-            {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
+            Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
           </p>
         </>
       )}
       {data?.source && (
         <p className="text-muted-foreground mt-0.5">{data.source}</p>
       )}
+    </div>
+  );
+}
+
+function TotalSecondsTooltip({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0]?.payload;
+  return (
+    <div className="rounded-md border px-3 py-2 text-xs" style={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))" }}>
+      <p className="font-medium mb-1">{label}</p>
+      <p style={{ color: "hsl(var(--chart-2))" }}>
+        Totaal: <span className="font-semibold">{data?.totalSeconds ?? "—"}s</span>
+      </p>
+      <p style={{ color: "hsl(var(--muted-foreground))" }}>
+        Sets: <span className="font-semibold">{data?.setCount ?? "—"}</span>
+      </p>
+      {data?.source && <p className="text-muted-foreground mt-0.5">{data.source}</p>}
     </div>
   );
 }
@@ -120,11 +150,13 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
   const chartData = chartResult.data;
   const isRepsOnly = chartResult.isRepsOnly;
   const isTimeBased = chartResult.isTimeBased;
-  const dataKey = isRepsOnly ? "lastSetReps" : "lastSetWeight";
-  const yLabel = isRepsOnly ? (isTimeBased ? "s" : "reps") : "kg";
-  const lineName = isRepsOnly
-    ? (isTimeBased ? "Laatste set (s)" : "Laatste set (reps)")
-    : "Laatste set (kg)";
+  const isBodyweight = chartResult.isBodyweight;
+  const showReps = isRepsOnly || isBodyweight;
+  const dataKey = showReps ? "lastSetReps" : "lastSetWeight";
+  const yLabel = isTimeBased ? "s" : (showReps ? "reps" : "kg");
+  const lineName = isTimeBased
+    ? "Laatste set (s)"
+    : (showReps ? "Laatste set (reps)" : "Laatste set (kg)");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -136,7 +168,7 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
           <div className="space-y-4">
             {/* Weight/Reps chart */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1">{isRepsOnly ? (isTimeBased ? "Tijd (seconden)" : "Reps") : "Gewicht (laatste set)"}</p>
+              <p className="text-xs text-muted-foreground mb-1">{isTimeBased ? "Tijd — laatste set (seconden)" : showReps ? "Reps (laatste set)" : "Gewicht (laatste set)"}</p>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -149,7 +181,7 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
               </ResponsiveContainer>
             </div>
             {/* Volume chart — for weighted and bodyweight exercises */}
-            {(!isRepsOnly || chartResult.isBodyweight) && chartData.some(d => d.volume > 0) && (
+            {!isTimeBased && (!isRepsOnly || isBodyweight) && chartData.some(d => d.volume > 0) && (
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Volume Load (kg x reps)</p>
                 <ResponsiveContainer width="100%" height={160}>
@@ -160,6 +192,22 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
                     <Tooltip content={<VolumeTooltip />} />
                     <Line type="monotone" dataKey="volume" stroke="hsl(var(--chart-2))" strokeWidth={2}
                       dot={{ r: 4, fill: "hsl(var(--chart-2))" }} activeDot={{ r: 6 }} name="Volume (kg)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            {/* Total seconds chart — for time-based exercises */}
+            {isTimeBased && chartData.some(d => d.totalSeconds > 0) && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Totaal seconden (alle sets)</p>
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="week" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} domain={["dataMin - 10", "dataMax + 10"]} />
+                    <Tooltip content={<TotalSecondsTooltip />} />
+                    <Line type="monotone" dataKey="totalSeconds" stroke="hsl(var(--chart-2))" strokeWidth={2}
+                      dot={{ r: 4, fill: "hsl(var(--chart-2))" }} activeDot={{ r: 6 }} name="Totaal (s)" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

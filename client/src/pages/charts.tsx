@@ -29,8 +29,7 @@ function CustomTooltip({ active, payload, label }: any) {
   const data = payload[0]?.payload;
   const isRepsOnly = data?.isRepsOnly;
   const isTimeBased = data?.isTimeBased;
-  const repsLabel = isTimeBased ? "Tijd" : "Reps";
-  const repsUnit = isTimeBased ? "s" : "";
+  const isBodyweight = data?.isBodyweight;
   return (
     <div
       className="rounded-md border px-3 py-2 text-xs"
@@ -40,17 +39,31 @@ function CustomTooltip({ active, payload, label }: any) {
       }}
     >
       <p className="font-medium mb-1">{label}</p>
-      {isRepsOnly ? (
-        <p style={{ color: "hsl(var(--chart-1))" }}>
-          {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
-        </p>
+      {isTimeBased ? (
+        <>
+          <p style={{ color: "hsl(var(--chart-1))" }}>
+            Tijd: <span className="font-semibold">{data?.lastSetReps ?? "—"}s</span>
+          </p>
+          <p style={{ color: "hsl(var(--muted-foreground))" }}>
+            Sets: <span className="font-semibold">{data?.setCount ?? "—"}</span>
+          </p>
+        </>
+      ) : isBodyweight || isRepsOnly ? (
+        <>
+          <p style={{ color: "hsl(var(--chart-1))" }}>
+            Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+          </p>
+          <p style={{ color: "hsl(var(--muted-foreground))" }}>
+            Sets: <span className="font-semibold">{data?.setCount ?? "—"}</span>
+          </p>
+        </>
       ) : (
         <>
           <p style={{ color: "hsl(var(--chart-1))" }}>
             Gewicht: <span className="font-semibold">{data?.lastSetWeight ?? "—"} kg</span>
           </p>
           <p style={{ color: "hsl(var(--muted-foreground))" }}>
-            {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
+            Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
           </p>
         </>
       )}
@@ -63,7 +76,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 /** Build chart data points from an array of FullMonthData blocks */
 export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: number | null): { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean; isTimeBased: boolean }[] {
-  const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; volume: number; source: string; sortDate: string }[]>();
+  const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; volume: number; setCount: number; totalSeconds: number; source: string; sortDate: string }[]>();
   const exerciseHasWeight = new Map<string, boolean>();
   const exerciseIsBodyweight = new Map<string, boolean>();
   const exerciseIsTimeBased = new Map<string, boolean>();
@@ -81,7 +94,7 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
         if (ex.trackingType === "time") exerciseIsTimeBased.set(ex.name, true);
 
         for (let w = 1; w <= weekCount; w++) {
-          const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
+          const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w && !l.skipped);
           if (weekLogs.length === 0) continue;
 
           const lastSet = weekLogs.reduce((best, l) =>
@@ -96,6 +109,9 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
             const r = l.reps ?? 0;
             return sum + (w2 * r);
           }, 0);
+
+          // Total seconds: sum of reps field for all sets (for time-based exercises)
+          const totalSeconds = weekLogs.reduce((sum, l) => sum + (l.reps ?? 0), 0);
 
           const weekDate = block.weekDates.find(
             (wd) => wd.trainingDayId === day.id && wd.weekNumber === w
@@ -115,6 +131,8 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
             lastSetWeight: Math.round((lastSet.weight ?? 0) * 10) / 10,
             lastSetReps: lastSet.reps != null ? Math.round(lastSet.reps * 10) / 10 : null,
             volume: Math.round(volume * 10) / 10,
+            setCount: weekLogs.length,
+            totalSeconds: Math.round(totalSeconds * 10) / 10,
             source: `${blockLabel} · ${day.name} W${w}`,
             sortDate: dateStr || `${block.month?.startDate || "9999"}-${day.sortOrder}-${w}`,
           });
@@ -130,7 +148,7 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
     const isRepsOnly = !exerciseHasWeight.get(name) && !isBw;
     const sorted = points
       .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
-      .map(p => ({ ...p, isRepsOnly, isTimeBased: isTime }));
+      .map(p => ({ ...p, isRepsOnly, isTimeBased: isTime, isBodyweight: isBw }));
     charts.push({ name, data: sorted, isRepsOnly, isBodyweight: isBw, isTimeBased: isTime });
   }
   return charts;
@@ -208,11 +226,13 @@ export default function ChartsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {sortedCharts.map((chart, i) => {
           const isHighlighted = chart.name === highlightName;
-          const dataKey = chart.isRepsOnly ? "lastSetReps" : "lastSetWeight";
-          const yLabel = chart.isRepsOnly ? (chart.isTimeBased ? "s" : "reps") : "kg";
-          const lineName = chart.isRepsOnly
-            ? (chart.isTimeBased ? "Laatste set (s)" : "Laatste set (reps)")
-            : "Laatste set (kg)";
+          // Bodyweight + reps_only → reps chart, weighted → weight chart, time → seconds chart
+          const showReps = chart.isRepsOnly || chart.isBodyweight;
+          const dataKey = showReps ? "lastSetReps" : "lastSetWeight";
+          const yLabel = chart.isTimeBased ? "s" : (showReps ? "reps" : "kg");
+          const lineName = chart.isTimeBased
+            ? "Laatste set (s)"
+            : (showReps ? "Laatste set (reps)" : "Laatste set (kg)");
           return (
             <div
               key={`${chart.name}-${i}`}
