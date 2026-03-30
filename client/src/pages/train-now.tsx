@@ -397,8 +397,13 @@ export default function TrainNowPage() {
             <h1 className="text-2xl font-bold leading-tight">{step.exercise.name}</h1>
           )}
 
+          {/* Exercise notes */}
+          {step.exercise.notes && (
+            <p className="text-xs text-muted-foreground italic mt-1">{step.exercise.notes}</p>
+          )}
+
           {/* Settings — label above, value below */}
-          <div className="flex gap-4 mt-3">
+          <div className="flex gap-4 mt-2">
             {[
               { label: "sets", value: step.exercise.sets },
               { label: isTimeBased ? "time" : "reps", value: `${step.exercise.goalReps}${isTimeBased ? "s" : ""}` },
