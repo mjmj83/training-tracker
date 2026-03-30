@@ -173,7 +173,7 @@ export default function TrainingPage() {
   };
 
   return (
-    <div className="flex flex-col h-full md:h-auto md:block p-4 md:space-y-2 gap-2 md:gap-0">
+    <div className="p-4 md:space-y-2">
       {/* Body fat reminder banner */}
       {bfReminderNeeded && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-4 py-3 flex items-start gap-2 text-sm">
@@ -206,7 +206,7 @@ export default function TrainingPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 pb-2 border-b border-border mb-2 shrink-0">
+      <div className="flex items-center gap-2 pb-2 border-b border-border mb-2 sticky top-0 z-30 bg-background -mx-4 px-4 pt-1 md:static md:mx-0 md:px-0 md:pt-0">
         {/* Desktop only: sidebar trigger + overview */}
         <SidebarTrigger className="hidden md:flex" data-testid="button-sidebar-toggle" />
         <MonthSwitcher readOnly={!isTrainer} />
@@ -305,7 +305,6 @@ export default function TrainingPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible md:flex-none">
       {(() => {
         const sortedDays = trainingDays.sort((a, b) => a.sortOrder - b.sortOrder);
         const activeDayId = activeTabDay && sortedDays.find(d => d.id === activeTabDay) ? activeTabDay : sortedDays[0]?.id ?? null;
@@ -394,7 +393,6 @@ export default function TrainingPage() {
           </>
         );
       })()}
-      </div>
 
       <OverviewDialog open={showOverview} onOpenChange={setShowOverview} monthId={monthId} />
     </div>

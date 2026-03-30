@@ -235,7 +235,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
     <div className="mb-4" data-testid={`training-day-${day.id}`}>
       {/* Day Header / Ruler */}
       {!hideHeader && (
-      <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-2 mb-1">
+      <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-2 mb-1 sticky top-0 z-20 md:static">
         <button onClick={() => setIsOpen(!isOpen)} className="text-muted-foreground" data-testid={`toggle-day-${day.id}`}>
           {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
