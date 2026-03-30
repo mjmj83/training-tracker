@@ -1,4 +1,4 @@
-import { useSelectedClient, useSelectedMonth } from "@/lib/state";
+import { useSelectedClient, useSelectedMonth, getViewMode, saveViewMode } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid } from "lucide-react";
@@ -30,7 +30,7 @@ export default function TrainingPage() {
   const { canUndo, canRedo, undo, redo, pushSnapshot, undoCount, redoCount } = useUndoRedo(monthId);
   const isTrainer = useIsTrainer();
   const [bfBannerDismissed, setBfBannerDismissed] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "tabs">("list");
+  const [viewMode, setViewMode] = useState<"list" | "tabs">(getViewMode);
   const [activeTabDay, setActiveTabDay] = useState<number | null>(null);
 
   // Fetch clients to get bfReminderEnabled for the selected client
@@ -206,7 +206,7 @@ export default function TrainingPage() {
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => setViewMode(v => v === "list" ? "tabs" : "list")}
+          onClick={() => setViewMode(v => { const next = v === "list" ? "tabs" : "list"; saveViewMode(next); return next; })}
           className="h-7 px-2 text-xs gap-1"
           title={viewMode === "list" ? "Tabweergave" : "Lijstweergave"}
           data-testid="button-view-mode"
