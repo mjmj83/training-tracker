@@ -532,7 +532,25 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] p-4 max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-[500px] p-4 max-h-[85vh] overflow-y-auto"
+        onPaste={(e) => {
+          if (mode !== "upload" || uploadPreview) return;
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          for (const item of Array.from(items)) {
+            if (item.type.startsWith("image/")) {
+              e.preventDefault();
+              const file = item.getAsFile();
+              if (file) {
+                setUploadFile(file);
+                setUploadPreview(URL.createObjectURL(file));
+              }
+              break;
+            }
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-sm">{exercise.name}</DialogTitle>
         </DialogHeader>
@@ -549,9 +567,9 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
             )}
             {!readOnly && (
               <div className="flex justify-end">
-                <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setMode("search")}>
+                <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setMode("upload")}>
                   <Search className="w-3 h-3" />
-                  {exercise.imageUrl ? "Wijzigen" : "Afbeelding zoeken"}
+                  {exercise.imageUrl ? "Wijzigen" : "Afbeelding toevoegen"}
                 </Button>
               </div>
             )}
@@ -564,19 +582,19 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
             <div className="flex border border-border rounded-md overflow-hidden">
               <button
                 className={`flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 transition-colors ${
-                  mode === "search" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => setMode("search")}
-              >
-                <Search className="w-3 h-3" /> Zoeken
-              </button>
-              <button
-                className={`flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 transition-colors ${
                   mode === "upload" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:text-foreground"
                 }`}
                 onClick={() => setMode("upload")}
               >
                 <Upload className="w-3 h-3" /> Upload eigen afbeelding
+              </button>
+              <button
+                className={`flex-1 py-1.5 text-xs font-medium flex items-center justify-center gap-1 transition-colors ${
+                  mode === "search" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setMode("search")}
+              >
+                <Search className="w-3 h-3" /> Zoeken
               </button>
             </div>
 
