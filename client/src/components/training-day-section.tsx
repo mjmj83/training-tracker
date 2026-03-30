@@ -259,13 +259,41 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
       {isOpen && (
         <div>
           <table className="text-sm border-separate" style={{ borderSpacing: '0 0' }} data-testid={`table-exercises-${day.id}`}>
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-1.5 px-2 font-medium text-muted-foreground whitespace-nowrap">Oefening</th>
+            <tbody>
+              {/* Week headers row — combined with first group label */}
+              <tr>
+                <td className="text-left py-1.5 px-2 font-medium text-muted-foreground whitespace-nowrap text-xs align-bottom">
+                  Oefening
+                  {/* Show first group label inline if the first group is grouped */}
+                  {groups.length > 0 && groups[0].groupId !== null && groups[0].exercises.length > 1 && (
+                    <div className="font-normal mt-1">
+                      {!readOnly && groups.length > 1 ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="text-[10px] italic text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer">
+                              {groups[0].exercises.length === 2 ? "superset" : groups[0].exercises.length === 3 ? "triset" : "giant set"}
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {groups.length > 1 && (
+                              <DropdownMenuItem onClick={() => moveGroup(0, 'down')}>
+                                <ArrowDown className="w-3.5 h-3.5 mr-2" /> Omlaag verplaatsen
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <span className="text-[10px] italic text-muted-foreground/60">
+                          {groups[0].exercises.length === 2 ? "superset" : groups[0].exercises.length === 3 ? "triset" : "giant set"}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </td>
                 {weeks.map((w) => (
-                  <th
+                  <td
                     key={w}
-                    className={`text-center py-1.5 px-1 font-medium text-muted-foreground w-[110px] max-w-[110px] transition-colors ${hoveredWeek === w ? "bg-primary/10" : ""}`}
+                    className={`text-center py-1.5 px-1 font-medium text-muted-foreground w-[110px] max-w-[110px] text-xs align-bottom transition-colors ${hoveredWeek === w ? "bg-primary/10" : ""}`}
                     onMouseEnter={() => setHoveredWeek(w)}
                     onMouseLeave={() => setHoveredWeek(null)}
                   >
@@ -279,13 +307,12 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         readOnly={readOnly}
                       />
                     </div>
-                  </th>
+                  </td>
                 ))}
-                {!readOnly && <th className="w-8"></th>}
-                <th className="w-0 p-0 border-0"></th>
+                {!readOnly && <td className="w-8"></td>}
+                <td className="w-0 p-0 border-0"></td>
               </tr>
-            </thead>
-            <tbody>
+
               {groups.map((group, gi) => {
                 const isGrouped = group.groupId !== null && group.exercises.length > 1;
                 const groupSize = group.exercises.length;
@@ -293,20 +320,21 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                 return group.exercises.map((ex, ei) => {
                   // Determine global index in sortedExercises for move up/down
                   const globalIdx = sortedExercises.findIndex(e => e.id === ex.id);
-                  // Spacer: 4px within superset, 16px between groups/exercises
                   const isFirstOverall = gi === 0 && ei === 0;
-                  const spacerHeight = (isGrouped && ei > 0) ? 'h-1' : (isFirstOverall ? 'h-0' : 'h-4');
+                  // Skip the group label for the very first group (already in header row)
+                  const showGroupLabel = isGrouped && ei === 0 && gi > 0;
 
                   return (
                     <Fragment key={ex.id}>
+                      {/* Spacer between groups */}
                       {!isFirstOverall && ei === 0 && (
-                        <tr><td colSpan={999} className={`${spacerHeight} p-0 border-0`}></td></tr>
+                        <tr><td colSpan={999} className="h-4 p-0 border-0"></td></tr>
                       )}
                       {isGrouped && ei > 0 && (
                         <tr><td colSpan={999} className="h-1 p-0 border-0"></td></tr>
                       )}
-                      {/* Group label above the first exercise — clickable for move */}
-                      {isGrouped && ei === 0 && (
+                      {/* Group label for 2nd+ groups */}
+                      {showGroupLabel && (
                         <tr><td colSpan={999} className="p-0 border-0" style={{ lineHeight: '16px' }}>
                           {!readOnly && groups.length > 1 ? (
                             <DropdownMenu>
