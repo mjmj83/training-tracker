@@ -129,6 +129,30 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
     }
   }
 
+  // Build labels for superset groups: Superset A, Superset B, etc.
+  const groupLabelMap = useMemo(() => {
+    const map = new Map<number, string>();
+    let letterIdx = 0;
+    for (const g of groups) {
+      if (g.groupId !== null && g.exercises.length > 1) {
+        const letter = String.fromCharCode(65 + letterIdx);
+        const size = g.exercises.length;
+        const prefix = size === 2 ? "Superset" : size === 3 ? "Triset" : "Giant set";
+        map.set(g.groupId, `${prefix} ${letter}`);
+        letterIdx++;
+      }
+    }
+    return map;
+  }, [groups]);
+
+  const getGroupLabel = (groupId: number | null, exerciseCount: number) => {
+    if (groupId !== null && groupLabelMap.has(groupId)) return groupLabelMap.get(groupId)!;
+    if (exerciseCount === 2) return "Superset";
+    if (exerciseCount === 3) return "Triset";
+    if (exerciseCount >= 4) return "Giant set";
+    return "";
+  };
+
   // Move an entire group (superset/triset/giant set) up or down
   const moveGroup = useCallback(async (groupIdx: number, direction: 'up' | 'down') => {
     const targetIdx = direction === 'up' ? groupIdx - 1 : groupIdx + 1;
@@ -298,7 +322,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button className="text-[10px] italic text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer">
-                              {groups[0].exercises.length === 2 ? "superset" : groups[0].exercises.length === 3 ? "triset" : "giant set"}
+                              {getGroupLabel(groups[0].groupId, groups[0].exercises.length)}
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
@@ -311,7 +335,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         </DropdownMenu>
                       ) : (
                         <span className="text-[10px] italic text-muted-foreground/60">
-                          {groups[0].exercises.length === 2 ? "superset" : groups[0].exercises.length === 3 ? "triset" : "giant set"}
+                          {getGroupLabel(groups[0].groupId, groups[0].exercises.length)}
                         </span>
                       )}
                     </div>
@@ -368,7 +392,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
               {groups.map((group, gi) => {
                 const isGrouped = group.groupId !== null && group.exercises.length > 1;
                 const groupSize = group.exercises.length;
-                const groupLabel = groupSize === 2 ? "superset" : groupSize === 3 ? "triset" : groupSize >= 4 ? "giant set" : "";
+                const groupLabel = getGroupLabel(group.groupId, groupSize);
                 return group.exercises.map((ex, ei) => {
                   // Determine global index in sortedExercises for move up/down
                   const globalIdx = sortedExercises.findIndex(e => e.id === ex.id);
