@@ -286,7 +286,7 @@ export default function TrainingPage() {
         const sortedDays = trainingDays.sort((a, b) => a.sortOrder - b.sortOrder);
         const activeDayId = activeTabDay && sortedDays.find(d => d.id === activeTabDay) ? activeTabDay : sortedDays[0]?.id ?? null;
 
-        const renderDay = (day: typeof sortedDays[0], idx: number) => (
+        const renderDay = (day: typeof sortedDays[0], idx: number, hideHeader = false) => (
           <TrainingDaySection
             key={day.id}
             day={day}
@@ -296,6 +296,7 @@ export default function TrainingPage() {
             weekCount={weekCount}
             onBeforeChange={pushSnapshot}
             readOnly={!isTrainer}
+            hideHeader={hideHeader}
             canMoveDayUp={idx > 0}
             canMoveDayDown={idx < sortedDays.length - 1}
             onMoveDayUp={async () => {
@@ -339,7 +340,7 @@ export default function TrainingPage() {
               </div>
               {/* Active day */}
               {sortedDays.map((day, idx) =>
-                day.id === activeDayId ? renderDay(day, idx) : null
+                day.id === activeDayId ? renderDay(day, idx, true) : null
               )}
               {isTrainer && (
                 <AddTrainingDay monthId={monthId} sortOrder={trainingDays.length} onBeforeChange={pushSnapshot} />

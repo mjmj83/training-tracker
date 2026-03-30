@@ -23,9 +23,10 @@ interface Props {
   onMoveDayDown?: () => void;
   canMoveDayUp?: boolean;
   canMoveDayDown?: boolean;
+  hideHeader?: boolean;
 }
 
-export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange, readOnly = false, onMoveDayUp, onMoveDayDown, canMoveDayUp = false, canMoveDayDown = false }: Props) {
+export default function TrainingDaySection({ day, exercises, weekDates, monthId, weekCount, onBeforeChange, readOnly = false, onMoveDayUp, onMoveDayDown, canMoveDayUp = false, canMoveDayDown = false, hideHeader = false }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(day.name);
@@ -188,6 +189,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
   return (
     <div className="mb-4" data-testid={`training-day-${day.id}`}>
       {/* Day Header / Ruler */}
+      {!hideHeader && (
       <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-2 mb-1">
         <button onClick={() => setIsOpen(!isOpen)} className="text-muted-foreground" data-testid={`toggle-day-${day.id}`}>
           {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -237,6 +239,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
           </DropdownMenu>
         )}
       </div>
+      )}
 
       {!readOnly && (
         <ConfirmDialog
@@ -292,7 +295,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                   const globalIdx = sortedExercises.findIndex(e => e.id === ex.id);
                   // Spacer: 4px within superset, 16px between groups/exercises
                   const isFirstOverall = gi === 0 && ei === 0;
-                  const spacerHeight = (isGrouped && ei > 0) ? 'h-1' : 'h-4';
+                  const spacerHeight = (isGrouped && ei > 0) ? 'h-1' : (isFirstOverall ? 'h-0' : 'h-4');
 
                   return (
                     <Fragment key={ex.id}>
