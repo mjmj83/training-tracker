@@ -4,7 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import TrainingPage from "@/pages/training";
 import ChartsPage from "@/pages/charts";
@@ -18,7 +18,6 @@ import AccountPage from "@/pages/account";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
-import ThemePicker from "@/components/theme-picker";
 import { Redirect } from "wouter";
 
 function ProtectedSettingsPage() {
@@ -69,10 +68,6 @@ function AuthenticatedApp() {
         <div className="flex h-screen w-full">
           <AppSidebar />
           <div className="flex flex-col flex-1 min-w-0">
-            <header className="flex items-center justify-between gap-2 px-3 py-2 border-b">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <ThemePicker />
-            </header>
             <main className="flex-1 overflow-auto">
               <AppRouter />
             </main>

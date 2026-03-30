@@ -2,6 +2,8 @@ import { useSelectedClient, useSelectedMonth, getViewMode, saveViewMode } from "
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import ThemePicker from "@/components/theme-picker";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import TrainingDaySection from "@/components/training-day-section";
@@ -200,6 +202,7 @@ export default function TrainingPage() {
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
+        <SidebarTrigger data-testid="button-sidebar-toggle" />
         <MonthSwitcher readOnly={!isTrainer} />
         <div className="flex-1" />
         {/* View mode toggle */}
@@ -280,6 +283,8 @@ export default function TrainingPage() {
             </Button>
           </div>
         )}
+        {!isTrainer && <div className="flex-1" />}
+        <ThemePicker />
       </div>
 
       {(() => {
