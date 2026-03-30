@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import ScrollPicker from "@/components/scroll-picker";
 import type { TrainingDay, Exercise, WeightLog, WeekDate, Month } from "@shared/schema";
 
 interface FullMonthData {
@@ -123,7 +124,7 @@ export default function TrainNowPage() {
   const step = steps[currentStep];
   const wk = weekNumber;
 
-  // Load existing data when step changes
+  // Load existing data when step changes, with fallback to previous set
   useEffect(() => {
     if (!step || phase !== "training") return;
     const key = `${step.exercise.id}-${wk}-${step.setNumber}`;
@@ -135,10 +136,35 @@ export default function TrainNowPage() {
       setNotes(saved.notes);
     } else {
       const log = step.exercise.weightLogs.find(l => l.weekNumber === wk && l.setNumber === step.setNumber);
-      setWeight(log?.weight != null ? String(log.weight) : "");
-      setReps(log?.reps != null ? String(log.reps) : "");
-      setSkipped(!!log?.skipped);
-      setNotes(log?.notes ?? "");
+      if (log && (log.weight != null || log.reps != null)) {
+        // Existing data for this set
+        setWeight(log.weight != null ? String(log.weight) : "");
+        setReps(log.reps != null ? String(log.reps) : "");
+        setSkipped(!!log.skipped);
+        setNotes(log.notes ?? "");
+      } else {
+        // Fallback: previous set of same exercise in same week (from savedData or logs)
+        let fallbackW = "";
+        let fallbackR = "";
+        if (step.setNumber > 1) {
+          const prevKey = `${step.exercise.id}-${wk}-${step.setNumber - 1}`;
+          const prevSaved = savedData[prevKey];
+          if (prevSaved && (prevSaved.weight || prevSaved.reps)) {
+            fallbackW = prevSaved.weight;
+            fallbackR = prevSaved.reps;
+          } else {
+            const prevLog = step.exercise.weightLogs.find(l => l.weekNumber === wk && l.setNumber === step.setNumber - 1);
+            if (prevLog) {
+              fallbackW = prevLog.weight != null ? String(prevLog.weight) : "";
+              fallbackR = prevLog.reps != null ? String(prevLog.reps) : "";
+            }
+          }
+        }
+        setWeight(fallbackW);
+        setReps(fallbackR);
+        setSkipped(false);
+        setNotes("");
+      }
     }
     setShowNotes(false);
     setShowImage(false);
@@ -180,6 +206,7 @@ export default function TrainNowPage() {
   if (!day || steps.length === 0) return <div className="flex items-center justify-center h-[100dvh] text-muted-foreground text-sm">Geen oefeningen gevonden</div>;
 
   const isWeighted = step?.exercise.weightType === "weighted";
+  const isRepsOnly = step?.exercise.weightType === "reps_only" || step?.exercise.weightType === "bodyweight";
   const isTimeBased = step?.exercise.trackingType === "time";
   const repsLabel = isTimeBased ? "seconden" : "reps";
   const imageUrl = step?.exercise.imageUrl;
@@ -358,7 +385,7 @@ export default function TrainNowPage() {
           ) : (
             <>
               <div className="flex items-center justify-center gap-4">
-                {isWeighted && (
+                {isWeighted ? (
                   <>
                     <div className="flex flex-col items-center">
                       <label className="text-xs text-muted-foreground mb-1">kg</label>
@@ -372,19 +399,41 @@ export default function TrainNowPage() {
                       />
                     </div>
                     <span className="text-muted-foreground text-2xl mt-5">×</span>
+                    <div className="flex flex-col items-center">
+                      <label className="text-xs text-muted-foreground mb-1">{repsLabel}</label>
+                      <input
+                        value={reps}
+                        onChange={(e) => setReps(e.target.value)}
+                        inputMode="numeric"
+                        placeholder="—"
+                        className="w-24 h-16 text-center text-3xl font-mono tabular-nums bg-muted/60 rounded-xl border-none outline-none focus:ring-2 focus:ring-primary"
+                        data-testid="input-train-reps"
+                      />
+                    </div>
                   </>
+                ) : isRepsOnly && !isTimeBased ? (
+                  <div className="w-28">
+                    <label className="text-xs text-muted-foreground text-center block mb-1">{repsLabel}</label>
+                    <ScrollPicker
+                      value={reps ? parseInt(reps) || 0 : 0}
+                      onChange={(v) => setReps(String(v))}
+                      min={0}
+                      max={100}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <label className="text-xs text-muted-foreground mb-1">{repsLabel}</label>
+                    <input
+                      value={reps}
+                      onChange={(e) => setReps(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="—"
+                      className="w-32 h-16 text-center text-3xl font-mono tabular-nums bg-muted/60 rounded-xl border-none outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="input-train-reps"
+                    />
+                  </div>
                 )}
-                <div className="flex flex-col items-center">
-                  <label className="text-xs text-muted-foreground mb-1">{repsLabel}</label>
-                  <input
-                    value={reps}
-                    onChange={(e) => setReps(e.target.value)}
-                    inputMode="numeric"
-                    placeholder="—"
-                    className={`h-16 text-center text-3xl font-mono tabular-nums bg-muted/60 rounded-xl border-none outline-none focus:ring-2 focus:ring-primary ${isWeighted ? "w-24" : "w-32"}`}
-                    data-testid="input-train-reps"
-                  />
-                </div>
               </div>
 
               {showNotes ? (

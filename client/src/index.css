@@ -286,3 +286,8 @@
     inset: -1px;
   }
 }
+
+/* Hide scrollbar for scroll picker */
+.scroll-picker-hide::-webkit-scrollbar {
+  display: none;
+}
