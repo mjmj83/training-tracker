@@ -299,12 +299,15 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
 
                   return (
                     <Fragment key={ex.id}>
-                      {!isFirstOverall && (
+                      {!isFirstOverall && ei === 0 && (
                         <tr><td colSpan={999} className={`${spacerHeight} p-0 border-0`}></td></tr>
+                      )}
+                      {isGrouped && ei > 0 && (
+                        <tr><td colSpan={999} className="h-1 p-0 border-0"></td></tr>
                       )}
                       {/* Group label above the first exercise — clickable for move */}
                       {isGrouped && ei === 0 && (
-                        <tr><td colSpan={999} className="p-0 border-0 pb-0.5">
+                        <tr><td colSpan={999} className="p-0 border-0" style={{ lineHeight: '16px' }}>
                           {!readOnly && groups.length > 1 ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
