@@ -473,6 +473,7 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
   const [selecting, setSelecting] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const activeQuery = searchQuery.trim() || exercise.name;
 
@@ -524,7 +525,7 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
 
   const handleClose = (v: boolean) => {
     onOpenChange(v);
-    if (!v) { setMode("view"); setSearchQuery(""); setUploadPreview(null); }
+    if (!v) { setMode("view"); setSearchQuery(""); setUploadPreview(null); setUploadFile(null); }
   };
 
   const isEditing = mode === "search" || mode === "upload";
@@ -632,7 +633,7 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
                       <img src={uploadPreview} alt="Preview" className="rounded-md max-h-[200px] object-contain" />
                     </div>
                     <div className="flex gap-2 justify-end">
-                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => setUploadPreview(null)}>
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setUploadPreview(null); setUploadFile(null); }}>
                         Annuleren
                       </Button>
                       <Button
@@ -640,8 +641,7 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
                         className="text-xs"
                         disabled={uploading}
                         onClick={() => {
-                          const input = document.querySelector<HTMLInputElement>("#exercise-image-upload");
-                          if (input?.files?.[0]) handleUpload(input.files[0]);
+                          if (uploadFile) handleUpload(uploadFile);
                         }}
                       >
                         {uploading ? "Uploaden..." : "Opslaan"}
@@ -650,11 +650,26 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
                   </div>
                 ) : (
                   <label
-                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-md p-8 cursor-pointer hover:border-primary/50 transition-colors"
+                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-md p-8 cursor-pointer hover:border-primary/50 transition-colors focus-within:border-primary/50"
                     htmlFor="exercise-image-upload"
+                    tabIndex={0}
+                    onPaste={(e) => {
+                      const items = e.clipboardData?.items;
+                      if (!items) return;
+                      for (const item of Array.from(items)) {
+                        if (item.type.startsWith("image/")) {
+                          const file = item.getAsFile();
+                          if (file) {
+                            setUploadFile(file);
+                            setUploadPreview(URL.createObjectURL(file));
+                          }
+                          break;
+                        }
+                      }
+                    }}
                   >
                     <Upload className="w-6 h-6 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Klik om een afbeelding te kiezen</span>
+                    <span className="text-xs text-muted-foreground">Klik om te kiezen of plak een afbeelding</span>
                     <span className="text-[10px] text-muted-foreground/60">GIF, JPG, PNG of WebP (max 10MB)</span>
                   </label>
                 )}
@@ -666,6 +681,7 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      setUploadFile(file);
                       setUploadPreview(URL.createObjectURL(file));
                     }
                   }}
@@ -676,7 +692,7 @@ function ExerciseImageDialog({ open, onOpenChange, exercise, monthId, readOnly }
 
             {/* Back button */}
             <div className="flex justify-start pt-1">
-              <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setMode("view"); setUploadPreview(null); }}>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setMode("view"); setUploadPreview(null); setUploadFile(null); }}>
                 Terug
               </Button>
             </div>
