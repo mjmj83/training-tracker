@@ -361,21 +361,45 @@ export default function ExerciseRow({
               <DialogHeader>
                 <DialogTitle className="text-sm">Instellingen — {exercise.name}</DialogTitle>
               </DialogHeader>
-              <div className="flex items-center gap-2 py-2">
-                <Switch
-                  id={`weight-toggle-${exercise.id}`}
-                  checked={weightType === "weighted"}
-                  onCheckedChange={(checked) => {
-                    const newType = checked ? "weighted" : "reps_only";
-                    setWeightType(newType);
-                    onBeforeChange();
-                    updateExercise.mutate({ weightType: newType });
-                  }}
-                  data-testid={`toggle-weight-type-${exercise.id}`}
-                />
-                <Label htmlFor={`weight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
-                  Gewicht
-                </Label>
+              <div className="space-y-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`weight-toggle-${exercise.id}`}
+                    checked={weightType === "weighted"}
+                    onCheckedChange={(checked) => {
+                      const newType = checked ? "weighted" : "reps_only";
+                      setWeightType(newType);
+                      onBeforeChange();
+                      updateExercise.mutate({ weightType: newType });
+                    }}
+                    data-testid={`toggle-weight-type-${exercise.id}`}
+                  />
+                  <Label htmlFor={`weight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
+                    Gewichten
+                  </Label>
+                </div>
+                <div className={`flex items-center gap-2 ${weightType === "weighted" ? "opacity-40 pointer-events-none" : ""}`}>
+                  <Switch
+                    id={`bodyweight-toggle-${exercise.id}`}
+                    checked={weightType === "bodyweight"}
+                    disabled={weightType === "weighted"}
+                    onCheckedChange={(checked) => {
+                      const newType = checked ? "bodyweight" : "reps_only";
+                      setWeightType(newType);
+                      onBeforeChange();
+                      updateExercise.mutate({ weightType: newType });
+                    }}
+                    data-testid={`toggle-bodyweight-${exercise.id}`}
+                  />
+                  <Label htmlFor={`bodyweight-toggle-${exercise.id}`} className="text-sm cursor-pointer">
+                    Bodyweight
+                  </Label>
+                </div>
+                {weightType === "bodyweight" && (
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    Charts gebruiken het lichaamsgewicht uit de laatste Body Composition meting.
+                  </p>
+                )}
               </div>
             </DialogContent>
           </Dialog>

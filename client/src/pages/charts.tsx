@@ -59,9 +59,10 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 /** Build chart data points from an array of FullMonthData blocks */
-export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; data: any[]; isRepsOnly: boolean }[] {
+export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: number | null): { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean }[] {
   const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; volume: number; source: string; sortDate: string }[]>();
   const exerciseHasWeight = new Map<string, boolean>();
+  const exerciseIsBodyweight = new Map<string, boolean>();
 
   for (const block of blocks) {
     const weekCount = block.month?.weekCount ?? 4;
@@ -70,6 +71,9 @@ export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; da
     for (const day of block.trainingDays) {
       for (const ex of day.exercises) {
         if (ex.weightLogs.length === 0) continue;
+
+        const isBw = ex.weightType === "bodyweight";
+        if (isBw) exerciseIsBodyweight.set(ex.name, true);
 
         for (let w = 1; w <= weekCount; w++) {
           const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
@@ -80,8 +84,10 @@ export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; da
           , weekLogs[0]);
 
           // Calculate total volume: sum of (weight * reps) for all sets
+          // For bodyweight exercises, use the latest measured bodyweight
+          const bwWeight = isBw && latestBodyweight ? latestBodyweight : 0;
           const volume = weekLogs.reduce((sum, l) => {
-            const w2 = l.weight ?? 0;
+            const w2 = isBw ? bwWeight : (l.weight ?? 0);
             const r = l.reps ?? 0;
             return sum + (w2 * r);
           }, 0);
@@ -112,13 +118,14 @@ export function buildExerciseCharts(blocks: FullMonthData[]): { name: string; da
     }
   }
 
-  const charts: { name: string; data: any[]; isRepsOnly: boolean }[] = [];
+  const charts: { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean }[] = [];
   for (const [name, points] of exerciseMap) {
-    const isRepsOnly = !exerciseHasWeight.get(name);
+    const isBw = exerciseIsBodyweight.get(name) ?? false;
+    const isRepsOnly = !exerciseHasWeight.get(name) && !isBw;
     const sorted = points
       .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
       .map(p => ({ ...p, isRepsOnly }));
-    charts.push({ name, data: sorted, isRepsOnly });
+    charts.push({ name, data: sorted, isRepsOnly, isBodyweight: isBw });
   }
   return charts;
 }
@@ -135,6 +142,15 @@ export default function ChartsPage() {
     queryFn: () => apiRequest("GET", `/api/clients/${clientId}/all-blocks`).then((r) => r.json()),
     enabled: !!clientId,
   });
+
+  const { data: abcData = [] } = useQuery<{ weightKg: number | null; date: string }[]>({
+    queryKey: ["/api/clients", clientId, "abc"],
+    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/abc`).then(r => r.json()),
+    enabled: !!clientId,
+  });
+  const latestBodyweight = abcData.length > 0
+    ? abcData.reduce((latest, m) => (m.date > latest.date ? m : latest), abcData[0]).weightKg
+    : null;
 
   useEffect(() => {
     if (highlightRef.current) {
@@ -159,7 +175,7 @@ export default function ChartsPage() {
     );
   }
 
-  const exerciseCharts = buildExerciseCharts(blocks);
+  const exerciseCharts = buildExerciseCharts(blocks, latestBodyweight);
 
   if (exerciseCharts.length === 0) {
     return (

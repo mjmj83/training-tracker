@@ -31,7 +31,7 @@ export default function WeightCell({
   previousReps,
   weightType,
 }: Props) {
-  const isRepsOnly = weightType === "reps_only";
+  const isRepsOnly = weightType === "reps_only" || weightType === "bodyweight";
   const [weight, setWeight] = useState(initialWeight !== null ? String(initialWeight) : "");
   const [reps, setReps] = useState(initialReps !== null ? String(initialReps) : "");
   const [skipped, setSkipped] = useState(!!initialSkipped);

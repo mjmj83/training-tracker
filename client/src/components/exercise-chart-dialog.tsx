@@ -81,6 +81,12 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+interface AbcMeasurement {
+  id: number;
+  date: string;
+  weightKg: number | null;
+}
+
 export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }: Props) {
   const { clientId } = useSelectedClient();
 
@@ -90,12 +96,23 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
     enabled: !!clientId && open,
   });
 
+  const { data: abcMeasurements = [] } = useQuery<AbcMeasurement[]>({
+    queryKey: ["/api/clients", clientId, "abc"],
+    queryFn: () => apiRequest("GET", `/api/clients/${clientId}/abc`).then(r => r.json()),
+    enabled: !!clientId && open,
+  });
+
+  // Get the latest bodyweight from ABC measurements
+  const latestBodyweight = abcMeasurements.length > 0
+    ? abcMeasurements.reduce((latest, m) => (m.date > latest.date ? m : latest), abcMeasurements[0]).weightKg
+    : null;
+
   // Find chart data for this specific exercise across all blocks
   const chartResult = (() => {
-    if (!blocks || !exerciseName) return { data: [], isRepsOnly: false };
-    const allCharts = buildExerciseCharts(blocks);
+    if (!blocks || !exerciseName) return { data: [], isRepsOnly: false, isBodyweight: false };
+    const allCharts = buildExerciseCharts(blocks, latestBodyweight);
     const match = allCharts.find(c => c.name === exerciseName);
-    return { data: match?.data ?? [], isRepsOnly: match?.isRepsOnly ?? false };
+    return { data: match?.data ?? [], isRepsOnly: match?.isRepsOnly ?? false, isBodyweight: match?.isBodyweight ?? false };
   })();
   const chartData = chartResult.data;
   const isRepsOnly = chartResult.isRepsOnly;
@@ -125,8 +142,8 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            {/* Volume chart — only for weighted exercises */}
-            {!isRepsOnly && chartData.some(d => d.volume > 0) && (
+            {/* Volume chart — for weighted and bodyweight exercises */}
+            {(!isRepsOnly || chartResult.isBodyweight) && chartData.some(d => d.volume > 0) && (
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Volume Load (kg x reps)</p>
                 <ResponsiveContainer width="100%" height={160}>

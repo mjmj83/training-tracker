@@ -67,7 +67,7 @@ export const exercises = sqliteTable("exercises", {
   tempo: text("tempo").default(""),
   rest: text("rest").default("60"), // seconds, e.g. "60" or "60-90"
   rir: text("rir").default(""), // Reps In Reserve e.g. "2" or "0-1"
-  weightType: text("weight_type").notNull().default("weighted"), // 'weighted' | 'reps_only'
+  weightType: text("weight_type").notNull().default("weighted"), // 'weighted' | 'reps_only' | 'bodyweight'
   notes: text("notes").default(""), // personal notes/remarks
   imageUrl: text("image_url"), // exercise image from ExerciseDB
   supersetGroupId: integer("superset_group_id"), // null = standalone, same value = grouped superset
