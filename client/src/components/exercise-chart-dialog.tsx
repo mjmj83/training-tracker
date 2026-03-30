@@ -31,6 +31,9 @@ function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0]?.payload;
   const isRepsOnly = data?.isRepsOnly;
+  const isTimeBased = data?.isTimeBased;
+  const repsLabel = isTimeBased ? "Tijd" : "Reps";
+  const repsUnit = isTimeBased ? "s" : "";
   return (
     <div
       className="rounded-md border px-3 py-2 text-xs"
@@ -42,7 +45,7 @@ function ChartTooltip({ active, payload, label }: any) {
       <p className="font-medium mb-1">{label}</p>
       {isRepsOnly ? (
         <p style={{ color: "hsl(var(--chart-1))" }}>
-          Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+          {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
         </p>
       ) : (
         <>
@@ -50,7 +53,7 @@ function ChartTooltip({ active, payload, label }: any) {
             Gewicht: <span className="font-semibold">{data?.lastSetWeight ?? "—"} kg</span>
           </p>
           <p style={{ color: "hsl(var(--muted-foreground))" }}>
-            Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+            {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
           </p>
         </>
       )}
@@ -112,13 +115,16 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
     if (!blocks || !exerciseName) return { data: [], isRepsOnly: false, isBodyweight: false };
     const allCharts = buildExerciseCharts(blocks, latestBodyweight);
     const match = allCharts.find(c => c.name === exerciseName);
-    return { data: match?.data ?? [], isRepsOnly: match?.isRepsOnly ?? false, isBodyweight: match?.isBodyweight ?? false };
+    return { data: match?.data ?? [], isRepsOnly: match?.isRepsOnly ?? false, isBodyweight: match?.isBodyweight ?? false, isTimeBased: match?.isTimeBased ?? false };
   })();
   const chartData = chartResult.data;
   const isRepsOnly = chartResult.isRepsOnly;
+  const isTimeBased = chartResult.isTimeBased;
   const dataKey = isRepsOnly ? "lastSetReps" : "lastSetWeight";
-  const yLabel = isRepsOnly ? "reps" : "kg";
-  const lineName = isRepsOnly ? "Laatste set (reps)" : "Laatste set (kg)";
+  const yLabel = isRepsOnly ? (isTimeBased ? "s" : "reps") : "kg";
+  const lineName = isRepsOnly
+    ? (isTimeBased ? "Laatste set (s)" : "Laatste set (reps)")
+    : "Laatste set (kg)";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -130,7 +136,7 @@ export default function ExerciseChartDialog({ exerciseName, open, onOpenChange }
           <div className="space-y-4">
             {/* Weight/Reps chart */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1">{isRepsOnly ? "Reps" : "Gewicht (laatste set)"}</p>
+              <p className="text-xs text-muted-foreground mb-1">{isRepsOnly ? (isTimeBased ? "Tijd (seconden)" : "Reps") : "Gewicht (laatste set)"}</p>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

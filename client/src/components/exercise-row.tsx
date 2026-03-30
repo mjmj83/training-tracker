@@ -55,6 +55,7 @@ export default function ExerciseRow({
   const [rir, setRir] = useState(exercise.rir ?? "");
   const [notes, setNotes] = useState(exercise.notes ?? "");
   const [weightType, setWeightType] = useState(exercise.weightType ?? "weighted");
+  const [trackingType, setTrackingType] = useState(exercise.trackingType ?? "reps");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showChart, setShowChart] = useState(false);
   const [showNotesDialog, setShowNotesDialog] = useState(false);
@@ -193,7 +194,11 @@ export default function ExerciseRow({
         {/* Line 2: Settings badges */}
         <div className="flex gap-2 items-center mt-2">
           {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { inputWidth: "w-10", placeholder: "3", tip: "Set range, bijv. 2 of 3-4" })}
-          {renderBadge("reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-12", placeholder: "10", tip: "Rep range, bijv. 10 of 10-15" })}
+          {renderBadge(
+            trackingType === "time" ? "time(s)" : "reps",
+            goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps",
+            { inputWidth: "w-12", placeholder: trackingType === "time" ? "30" : "10", tip: trackingType === "time" ? "Seconden, bijv. 30 of 30-45" : "Rep range, bijv. 10 of 10-15" }
+          )}
           {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-10", placeholder: "—", tip: "Elk getal = seconden. Bijv. 3010: 3s zakken, 0s pauze onder, 1s omhoog, 0s rust boven" })}
           {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { inputWidth: "w-10", placeholder: "60", tip: "Seconden rust tussen de sets" })}
           {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-8", placeholder: "—", tip: "Reps In Reserve range, bijv. 2 of 0-1" })}
@@ -264,6 +269,7 @@ export default function ExerciseRow({
                   previousWeight={prevLog?.weight}
                   previousReps={prevLog?.reps}
                   weightType={weightType}
+                  trackingType={trackingType}
                 />
               );
             })}
@@ -400,6 +406,29 @@ export default function ExerciseRow({
                     Charts gebruiken het lichaamsgewicht uit de laatste Body Composition meting.
                   </p>
                 )}
+                <div className="border-t border-border pt-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`time-toggle-${exercise.id}`}
+                      checked={trackingType === "time"}
+                      onCheckedChange={(checked) => {
+                        const newType = checked ? "time" : "reps";
+                        setTrackingType(newType);
+                        onBeforeChange();
+                        updateExercise.mutate({ trackingType: newType });
+                      }}
+                      data-testid={`toggle-tracking-type-${exercise.id}`}
+                    />
+                    <Label htmlFor={`time-toggle-${exercise.id}`} className="text-sm cursor-pointer">
+                      Tijd (seconden)
+                    </Label>
+                  </div>
+                  {trackingType === "time" && (
+                    <p className="text-[10px] text-muted-foreground leading-snug mt-1">
+                      Invoer in seconden in plaats van reps.
+                    </p>
+                  )}
+                </div>
               </div>
             </DialogContent>
           </Dialog>

@@ -21,6 +21,7 @@ interface Props {
   previousWeight?: number | null;
   previousReps?: number | null;
   weightType?: string;
+  trackingType?: string;
 }
 
 export default function WeightCell({
@@ -30,8 +31,10 @@ export default function WeightCell({
   previousWeight,
   previousReps,
   weightType,
+  trackingType,
 }: Props) {
   const isRepsOnly = weightType === "reps_only" || weightType === "bodyweight";
+  const isTimeBased = trackingType === "time";
   const [weight, setWeight] = useState(initialWeight !== null ? String(initialWeight) : "");
   const [reps, setReps] = useState(initialReps !== null ? String(initialReps) : "");
   const [skipped, setSkipped] = useState(!!initialSkipped);
@@ -108,7 +111,7 @@ export default function WeightCell({
               onChange={(e) => { if (!readOnly) setReps(e.target.value); }}
               onBlur={handleBlur}
               onFocus={handleRepsFocus}
-              placeholder={previousReps != null ? String(previousReps) : "r"}
+              placeholder={previousReps != null ? String(previousReps) : (isTimeBased ? "s" : "r")}
               className={`bg-transparent border-none outline-none text-center text-sm tabular-nums font-mono ${isRepsOnly ? "w-[36px]" : "w-[24px]"}`}
               readOnly={readOnly}
               data-testid={`input-reps-${exerciseId}-w${weekNumber}-s${setNumber}`}

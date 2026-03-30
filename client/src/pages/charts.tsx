@@ -28,6 +28,9 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0]?.payload;
   const isRepsOnly = data?.isRepsOnly;
+  const isTimeBased = data?.isTimeBased;
+  const repsLabel = isTimeBased ? "Tijd" : "Reps";
+  const repsUnit = isTimeBased ? "s" : "";
   return (
     <div
       className="rounded-md border px-3 py-2 text-xs"
@@ -39,7 +42,7 @@ function CustomTooltip({ active, payload, label }: any) {
       <p className="font-medium mb-1">{label}</p>
       {isRepsOnly ? (
         <p style={{ color: "hsl(var(--chart-1))" }}>
-          Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+          {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
         </p>
       ) : (
         <>
@@ -47,7 +50,7 @@ function CustomTooltip({ active, payload, label }: any) {
             Gewicht: <span className="font-semibold">{data?.lastSetWeight ?? "—"} kg</span>
           </p>
           <p style={{ color: "hsl(var(--muted-foreground))" }}>
-            Reps: <span className="font-semibold">{data?.lastSetReps ?? "—"}</span>
+            {repsLabel}: <span className="font-semibold">{data?.lastSetReps ?? "—"}{repsUnit}</span>
           </p>
         </>
       )}
@@ -59,10 +62,11 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 /** Build chart data points from an array of FullMonthData blocks */
-export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: number | null): { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean }[] {
+export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: number | null): { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean; isTimeBased: boolean }[] {
   const exerciseMap = new Map<string, { week: string; lastSetWeight: number; lastSetReps: number | null; volume: number; source: string; sortDate: string }[]>();
   const exerciseHasWeight = new Map<string, boolean>();
   const exerciseIsBodyweight = new Map<string, boolean>();
+  const exerciseIsTimeBased = new Map<string, boolean>();
 
   for (const block of blocks) {
     const weekCount = block.month?.weekCount ?? 4;
@@ -74,6 +78,7 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
 
         const isBw = ex.weightType === "bodyweight";
         if (isBw) exerciseIsBodyweight.set(ex.name, true);
+        if (ex.trackingType === "time") exerciseIsTimeBased.set(ex.name, true);
 
         for (let w = 1; w <= weekCount; w++) {
           const weekLogs = ex.weightLogs.filter((l) => l.weekNumber === w);
@@ -107,9 +112,9 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
           }
           exerciseMap.get(ex.name)!.push({
             week: label,
-            lastSetWeight: lastSet.weight ?? 0,
-            lastSetReps: lastSet.reps,
-            volume: Math.round(volume),
+            lastSetWeight: Math.round((lastSet.weight ?? 0) * 10) / 10,
+            lastSetReps: lastSet.reps != null ? Math.round(lastSet.reps * 10) / 10 : null,
+            volume: Math.round(volume * 10) / 10,
             source: `${blockLabel} · ${day.name} W${w}`,
             sortDate: dateStr || `${block.month?.startDate || "9999"}-${day.sortOrder}-${w}`,
           });
@@ -118,14 +123,15 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
     }
   }
 
-  const charts: { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean }[] = [];
+  const charts: { name: string; data: any[]; isRepsOnly: boolean; isBodyweight: boolean; isTimeBased: boolean }[] = [];
   for (const [name, points] of exerciseMap) {
     const isBw = exerciseIsBodyweight.get(name) ?? false;
+    const isTime = exerciseIsTimeBased.get(name) ?? false;
     const isRepsOnly = !exerciseHasWeight.get(name) && !isBw;
     const sorted = points
       .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
-      .map(p => ({ ...p, isRepsOnly }));
-    charts.push({ name, data: sorted, isRepsOnly, isBodyweight: isBw });
+      .map(p => ({ ...p, isRepsOnly, isTimeBased: isTime }));
+    charts.push({ name, data: sorted, isRepsOnly, isBodyweight: isBw, isTimeBased: isTime });
   }
   return charts;
 }
@@ -203,8 +209,10 @@ export default function ChartsPage() {
         {sortedCharts.map((chart, i) => {
           const isHighlighted = chart.name === highlightName;
           const dataKey = chart.isRepsOnly ? "lastSetReps" : "lastSetWeight";
-          const yLabel = chart.isRepsOnly ? "reps" : "kg";
-          const lineName = chart.isRepsOnly ? "Laatste set (reps)" : "Laatste set (kg)";
+          const yLabel = chart.isRepsOnly ? (chart.isTimeBased ? "s" : "reps") : "kg";
+          const lineName = chart.isRepsOnly
+            ? (chart.isTimeBased ? "Laatste set (s)" : "Laatste set (reps)")
+            : "Laatste set (kg)";
           return (
             <div
               key={`${chart.name}-${i}`}

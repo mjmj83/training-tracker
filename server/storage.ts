@@ -195,6 +195,8 @@ try { sqlite.exec("ALTER TABLE users ADD COLUMN pin_hash TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE credentials ADD COLUMN name TEXT"); } catch {}
 // Migration: add image_url column to exercises
 try { sqlite.exec("ALTER TABLE exercises ADD COLUMN image_url TEXT"); } catch {}
+// Migration: add tracking_type column to exercises
+try { sqlite.exec("ALTER TABLE exercises ADD COLUMN tracking_type TEXT NOT NULL DEFAULT 'reps'"); } catch {}
 // Migration: add skipped column to weight_logs
 try { sqlite.exec("ALTER TABLE weight_logs ADD COLUMN skipped INTEGER NOT NULL DEFAULT 0"); } catch {}
 
