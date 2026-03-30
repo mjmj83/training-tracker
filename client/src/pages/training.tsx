@@ -1,7 +1,7 @@
 import { useSelectedClient, useSelectedMonth } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download } from "lucide-react";
+import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import TrainingDaySection from "@/components/training-day-section";
@@ -30,6 +30,8 @@ export default function TrainingPage() {
   const { canUndo, canRedo, undo, redo, pushSnapshot, undoCount, redoCount } = useUndoRedo(monthId);
   const isTrainer = useIsTrainer();
   const [bfBannerDismissed, setBfBannerDismissed] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "tabs">("list");
+  const [activeTabDay, setActiveTabDay] = useState<number | null>(null);
 
   // Fetch clients to get bfReminderEnabled for the selected client
   const { data: clients = [] } = useQuery<Client[]>({
@@ -200,6 +202,17 @@ export default function TrainingPage() {
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
         <MonthSwitcher readOnly={!isTrainer} />
         <div className="flex-1" />
+        {/* View mode toggle */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setViewMode(v => v === "list" ? "tabs" : "list")}
+          className="h-7 px-2 text-xs gap-1"
+          title={viewMode === "list" ? "Tabweergave" : "Lijstweergave"}
+          data-testid="button-view-mode"
+        >
+          {viewMode === "list" ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
+        </Button>
         {isTrainer && (
           <div className="flex items-center gap-1">
             <WeekCountSelector monthId={monthId} currentCount={weekCount} />
@@ -269,9 +282,11 @@ export default function TrainingPage() {
         )}
       </div>
 
-      {trainingDays
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((day, idx, sorted) => (
+      {(() => {
+        const sortedDays = trainingDays.sort((a, b) => a.sortOrder - b.sortOrder);
+        const activeDayId = activeTabDay && sortedDays.find(d => d.id === activeTabDay) ? activeTabDay : sortedDays[0]?.id ?? null;
+
+        const renderDay = (day: typeof sortedDays[0], idx: number) => (
           <TrainingDaySection
             key={day.id}
             day={day}
@@ -282,28 +297,66 @@ export default function TrainingPage() {
             onBeforeChange={pushSnapshot}
             readOnly={!isTrainer}
             canMoveDayUp={idx > 0}
-            canMoveDayDown={idx < sorted.length - 1}
+            canMoveDayDown={idx < sortedDays.length - 1}
             onMoveDayUp={async () => {
               if (idx <= 0) return;
               pushSnapshot();
-              const prev = sorted[idx - 1];
+              const prev = sortedDays[idx - 1];
               await apiRequest("PATCH", `/api/training-days/${day.id}`, { sortOrder: prev.sortOrder });
               await apiRequest("PATCH", `/api/training-days/${prev.id}`, { sortOrder: day.sortOrder });
               queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
             }}
             onMoveDayDown={async () => {
-              if (idx >= sorted.length - 1) return;
+              if (idx >= sortedDays.length - 1) return;
               pushSnapshot();
-              const next = sorted[idx + 1];
+              const next = sortedDays[idx + 1];
               await apiRequest("PATCH", `/api/training-days/${day.id}`, { sortOrder: next.sortOrder });
               await apiRequest("PATCH", `/api/training-days/${next.id}`, { sortOrder: day.sortOrder });
               queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
             }}
           />
-        ))}
-      {isTrainer && (
-        <AddTrainingDay monthId={monthId} sortOrder={trainingDays.length} onBeforeChange={pushSnapshot} />
-      )}
+        );
+
+        if (viewMode === "tabs" && sortedDays.length > 0) {
+          return (
+            <>
+              {/* Tab bar */}
+              <div className="flex items-center gap-0.5 mb-2 overflow-x-auto">
+                {sortedDays.map(day => (
+                  <button
+                    key={day.id}
+                    onClick={() => setActiveTabDay(day.id)}
+                    className={`px-3 py-1.5 text-xs rounded-md transition-colors whitespace-nowrap ${
+                      activeDayId === day.id
+                        ? "bg-primary/10 text-foreground font-medium border border-primary/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                    data-testid={`tab-day-${day.id}`}
+                  >
+                    {day.name}
+                  </button>
+                ))}
+              </div>
+              {/* Active day */}
+              {sortedDays.map((day, idx) =>
+                day.id === activeDayId ? renderDay(day, idx) : null
+              )}
+              {isTrainer && (
+                <AddTrainingDay monthId={monthId} sortOrder={trainingDays.length} onBeforeChange={pushSnapshot} />
+              )}
+            </>
+          );
+        }
+
+        return (
+          <>
+            {sortedDays.map((day, idx) => renderDay(day, idx))}
+            {isTrainer && (
+              <AddTrainingDay monthId={monthId} sortOrder={trainingDays.length} onBeforeChange={pushSnapshot} />
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
