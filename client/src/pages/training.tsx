@@ -206,7 +206,7 @@ export default function TrainingPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 pb-2 border-b border-border mb-2 sticky top-0 z-30 bg-background -mx-4 px-4 pt-1 md:static md:mx-0 md:px-0 md:pt-0">
+      <div className="flex items-center gap-2 pb-2 border-b border-border mb-2">
         {/* Desktop only: sidebar trigger + overview */}
         <SidebarTrigger className="hidden md:flex" data-testid="button-sidebar-toggle" />
         <MonthSwitcher readOnly={!isTrainer} />
