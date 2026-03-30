@@ -236,10 +236,12 @@ export default function TrainNowPage() {
                 {weeks.map(w => {
                   const hasData = day.exercises.some(ex => ex.weightLogs.some(l => l.weekNumber === w && (l.weight != null || l.reps != null)));
                   const isLocked = fullData.weekDates.some(wd => wd.trainingDayId === dayId && wd.weekNumber === w && wd.locked);
+                  const wd = fullData.weekDates.find(wd2 => wd2.trainingDayId === dayId && wd2.weekNumber === w);
+                  const dateStr = wd?.date ? new Date(wd.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) : "";
                   return (
                     <SelectItem key={w} value={String(w)}>
-                      Week {w}
-                      {isLocked ? " 🔒" : hasData ? " (data)" : ""}
+                      Week {w}{dateStr ? ` · ${dateStr}` : ""}
+                      {isLocked ? " 🔒" : hasData ? " ✓" : ""}
                     </SelectItem>
                   );
                 })}

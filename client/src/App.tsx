@@ -16,6 +16,7 @@ import LoginPage from "@/pages/login";
 import AdminPage from "@/pages/admin";
 import AccountPage from "@/pages/account";
 import TrainNowPage from "@/pages/train-now";
+import MobileNav from "@/components/mobile-nav";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { useIsTrainer } from "@/hooks/use-is-trainer";
@@ -79,12 +80,15 @@ function AuthenticatedApp() {
           <div className="flex h-screen w-full">
             <AppSidebar />
             <div className="flex flex-col flex-1 min-w-0">
-              <main className="flex-1 overflow-auto">
+              <main className="flex-1 overflow-auto pb-16 md:pb-0">
                 <AppRouter />
               </main>
-              <PerplexityAttribution />
+              <div className="hidden md:block">
+                <PerplexityAttribution />
+              </div>
             </div>
           </div>
+          <MobileNav />
         </SidebarProvider>
       </TrainNowRouter>
     </Router>

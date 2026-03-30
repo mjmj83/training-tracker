@@ -123,7 +123,8 @@ export default function TrainingPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
         <Dumbbell className="w-10 h-10 opacity-30" />
-        <p className="text-sm">Selecteer een klant in de zijbalk</p>
+        <p className="text-sm">Selecteer een klant</p>
+        <SidebarTrigger className="mt-2" data-testid="button-sidebar-open-mobile" />
       </div>
     );
   }
