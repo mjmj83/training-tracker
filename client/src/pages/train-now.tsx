@@ -20,7 +20,7 @@ interface FullMonthData {
 interface TrainStep {
   exercise: Exercise & { weightLogs: WeightLog[] };
   setNumber: number;
-  groupLabel: string;
+  groupLabel: string; // e.g. "Superset A", "Triset B"
   groupExerciseIndex: number;
   groupExerciseCount: number;
   totalSetsInGroup: number;
@@ -49,12 +49,15 @@ function buildSteps(exercises: (Exercise & { weightLogs: WeightLog[] })[]): Trai
   }
 
   const steps: TrainStep[] = [];
+  let groupLetterIdx = 0; // A, B, C...
   for (const group of groups) {
     const exs = group.exercises;
     const isGrouped = group.groupId !== null && exs.length > 1;
+    const letter = String.fromCharCode(65 + groupLetterIdx); // A, B, C...
     const groupLabel = isGrouped
-      ? exs.length === 2 ? "Superset" : exs.length === 3 ? "Triset" : "Giant set"
+      ? (exs.length === 2 ? "Superset" : exs.length === 3 ? "Triset" : "Giant set") + " " + letter
       : "";
+    if (isGrouped) groupLetterIdx++;
     const maxSets = Math.max(...exs.map(e => parseMaxRange(e.sets) || 3));
 
     if (isGrouped) {
@@ -89,14 +92,14 @@ export default function TrainNowPage() {
   const weekCount = fullData?.month?.weekCount ?? 4;
   const weeks = Array.from({ length: weekCount }, (_, i) => i + 1);
 
-  // Find first week with ALL exercises empty (no data at all)
+  // Find first week that is not fully completed (not all exercises have data)
   const suggestedWeek = useMemo(() => {
-    if (!day) return 1;
+    if (!day || day.exercises.length === 0) return 1;
     for (let w = 1; w <= weekCount; w++) {
-      const hasAnyData = day.exercises.some(ex =>
-        ex.weightLogs.some(l => l.weekNumber === w && (l.weight != null || l.reps != null || l.skipped))
+      const allExercisesHaveData = day.exercises.every(ex =>
+        ex.weightLogs.some(l => l.weekNumber === w && (l.weight != null || l.reps != null))
       );
-      if (!hasAnyData) return w;
+      if (!allExercisesHaveData) return w;
     }
     return weekCount;
   }, [day, weekCount]);
@@ -298,8 +301,8 @@ export default function TrainNowPage() {
         <div className="shrink-0">
           {step.groupLabel && (
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs uppercase tracking-wider text-primary font-bold">{step.groupLabel}</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-primary font-bold">{step.groupLabel}</span>
+              <span className="text-sm text-muted-foreground font-semibold">
                 Oefening {step.groupExerciseIndex + 1}/{step.groupExerciseCount} · Set {step.currentSetInGroup}/{step.totalSetsInGroup}
               </span>
             </div>
