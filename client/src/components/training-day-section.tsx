@@ -297,7 +297,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                     onMouseLeave={() => setHoveredWeek(null)}
                   >
                     <div className="flex flex-col items-center gap-0.5">
-                      <span>W{w}</span>
+                      <span>Week {w}</span>
                       <WeekDateInput
                         monthId={monthId}
                         trainingDayId={day.id}

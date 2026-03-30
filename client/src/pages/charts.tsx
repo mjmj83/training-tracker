@@ -121,7 +121,7 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
           const dateStr = weekDate?.date || block.month?.startDate || "";
           const label = dateStr
             ? new Date(dateStr).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
-            : `${blockLabel} ${day.name} W${w}`;
+            : `${blockLabel} ${day.name} Week ${w}`;
 
           if (!exerciseMap.has(ex.name)) exerciseMap.set(ex.name, []);
           if (lastSet.weight && lastSet.weight > 0) {
@@ -134,7 +134,7 @@ export function buildExerciseCharts(blocks: FullMonthData[], latestBodyweight?: 
             volume: Math.round(volume * 10) / 10,
             setCount: weekLogs.length,
             totalSeconds: Math.round(totalSeconds * 10) / 10,
-            source: `${blockLabel} · ${day.name} W${w}`,
+            source: `${blockLabel} · ${day.name} Week ${w}`,
             sortDate: dateStr || `${block.month?.startDate || "9999"}-${day.sortOrder}-${w}`,
           });
         }
@@ -446,7 +446,7 @@ export default function ChartsPage() {
                         <tr key={gi} className="border-b last:border-b-0 hover:bg-muted/30">
                           <td className="px-4 py-2 whitespace-nowrap tabular-nums">{formatDate(group.date)}</td>
                           <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">{group.block}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">{group.day} W{group.week}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">{group.day} Week {group.week}</td>
                           <td className="px-4 py-2 text-center">
                             <div className="flex items-center justify-center gap-1.5 flex-wrap">
                               {group.sets.map((s, si) => (

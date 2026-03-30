@@ -188,7 +188,7 @@ export default function WeightCell({
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="text-sm">
-                Opmerking — Set {setNumber}, W{weekNumber}
+                Opmerking — Set {setNumber}, Week {weekNumber}
                 {weight && reps ? ` (${weight} x ${reps})` : ""}
               </DialogTitle>
             </DialogHeader>

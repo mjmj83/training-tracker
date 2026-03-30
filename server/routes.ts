@@ -421,7 +421,7 @@ export function registerRoutes(server: Server, app: Express): void {
       for (let w = 1; w <= weekCount; w++) {
         for (let s = 1; s <= maxSets; s++) {
           cols.push({
-            header: `W${w} S${s}`,
+            header: `Week ${w} S${s}`,
             key: `w${w}s${s}`,
             width: 11,
           });
