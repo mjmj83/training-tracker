@@ -368,10 +368,11 @@ export default function ExerciseRow({
                 <DialogTitle className="text-sm">Instellingen — {exercise.name}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3 py-2">
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${trackingType === "time" ? "opacity-40 pointer-events-none" : ""}`}>
                   <Switch
                     id={`weight-toggle-${exercise.id}`}
                     checked={weightType === "weighted"}
+                    disabled={trackingType === "time"}
                     onCheckedChange={(checked) => {
                       const newType = checked ? "weighted" : "reps_only";
                       setWeightType(newType);
@@ -384,11 +385,11 @@ export default function ExerciseRow({
                     Gewichten
                   </Label>
                 </div>
-                <div className={`flex items-center gap-2 ${weightType === "weighted" ? "opacity-40 pointer-events-none" : ""}`}>
+                <div className={`flex items-center gap-2 ${weightType === "weighted" || trackingType === "time" ? "opacity-40 pointer-events-none" : ""}`}>
                   <Switch
                     id={`bodyweight-toggle-${exercise.id}`}
                     checked={weightType === "bodyweight"}
-                    disabled={weightType === "weighted"}
+                    disabled={weightType === "weighted" || trackingType === "time"}
                     onCheckedChange={(checked) => {
                       const newType = checked ? "bodyweight" : "reps_only";
                       setWeightType(newType);
@@ -407,10 +408,11 @@ export default function ExerciseRow({
                   </p>
                 )}
                 <div className="border-t border-border pt-3">
-                  <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 ${weightType !== "reps_only" ? "opacity-40 pointer-events-none" : ""}`}>
                     <Switch
                       id={`time-toggle-${exercise.id}`}
                       checked={trackingType === "time"}
+                      disabled={weightType !== "reps_only"}
                       onCheckedChange={(checked) => {
                         const newType = checked ? "time" : "reps";
                         setTrackingType(newType);
