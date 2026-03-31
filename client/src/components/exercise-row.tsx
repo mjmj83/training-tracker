@@ -225,7 +225,7 @@ export default function ExerciseRow({
             {hasNotes && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <p className="text-xs text-muted-foreground italic truncate max-w-[260px] cursor-default leading-tight">
+                  <p className="text-xs text-muted-foreground italic cursor-default leading-tight max-w-[150px] md:max-w-[260px] line-clamp-2 md:line-clamp-1">
                     {notes}
                   </p>
                 </TooltipTrigger>
@@ -234,11 +234,11 @@ export default function ExerciseRow({
             )}
           </div>
         ) : hasNotes ? (
-          <div className="flex items-center gap-1 mt-2">
-            <MessageCircleWarning className="w-3.5 h-3.5 text-primary shrink-0" />
+          <div className="flex items-start gap-1 mt-2">
+            <MessageCircleWarning className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
             <Tooltip>
               <TooltipTrigger asChild>
-                <p className="text-xs text-muted-foreground italic truncate max-w-[260px] cursor-default leading-tight">{notes}</p>
+                <p className="text-xs text-muted-foreground italic cursor-default leading-tight max-w-[150px] md:max-w-[260px] line-clamp-2 md:line-clamp-1">{notes}</p>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-wrap">{notes}</TooltipContent>
             </Tooltip>
