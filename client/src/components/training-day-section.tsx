@@ -310,7 +310,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
 
       {/* Exercise Table */}
       {isOpen && (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" style={{ overscrollBehaviorX: 'none' }}>
           <table className="text-sm border-separate w-full" style={{ borderSpacing: '0 0' }} data-testid={`table-exercises-${day.id}`}>
             <tbody>
               {/* Week headers row — combined with first group label */}
