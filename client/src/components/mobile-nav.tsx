@@ -43,19 +43,19 @@ export default function MobileNav() {
   return (
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
-        <div className="flex items-center justify-around px-1 pb-[env(safe-area-inset-bottom,0px)]" style={{ height: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}>
+        <div className="flex items-center justify-around px-1 pb-[env(safe-area-inset-bottom,0px)]" style={{ height: "calc(2.75rem + env(safe-area-inset-bottom, 0px))" }}>
           {navItems.map(({ href, icon: Icon, label, match }) => {
             const isActive = match(location);
             return (
               <Link key={href} href={href}>
                 <button
-                  className={`flex flex-col items-center justify-center gap-0.5 min-w-[48px] py-1.5 rounded-lg transition-colors ${
+                  className={`flex flex-col items-center justify-center gap-0 min-w-[48px] py-1 rounded-lg transition-colors ${
                     isActive ? "text-primary" : "text-muted-foreground"
                   }`}
                   data-testid={`mobile-nav-${label.toLowerCase()}`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium leading-none">{label}</span>
+                  <Icon className="w-[18px] h-[18px]" />
+                  <span className="text-[9px] font-medium leading-none">{label}</span>
                 </button>
               </Link>
             );
@@ -65,13 +65,13 @@ export default function MobileNav() {
           <Popover open={menuOpen} onOpenChange={setMenuOpen}>
             <PopoverTrigger asChild>
               <button
-                className={`flex flex-col items-center justify-center gap-0.5 min-w-[48px] py-1.5 rounded-lg transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0 min-w-[48px] py-1 rounded-lg transition-colors ${
                   menuOpen || ["/settings", "/admin", "/account"].includes(location) ? "text-primary" : "text-muted-foreground"
                 }`}
                 data-testid="mobile-nav-menu"
               >
-                <Menu className="w-5 h-5" />
-                <span className="text-[10px] font-medium leading-none">Meer</span>
+                <Menu className="w-[18px] h-[18px]" />
+                <span className="text-[9px] font-medium leading-none">Meer</span>
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" side="top" sideOffset={8} className="w-[240px] p-1.5">

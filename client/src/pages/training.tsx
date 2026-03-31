@@ -177,7 +177,7 @@ export default function TrainingPage() {
     <div className="flex flex-col h-full md:block md:h-auto p-2 md:p-4 md:space-y-2">
       {/* Body fat reminder banner */}
       {bfReminderNeeded && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-4 py-3 flex items-start gap-2 text-sm">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-3 py-2 md:px-4 md:py-3 flex items-start gap-2 text-xs md:text-sm shrink-0">
           <span className="shrink-0 mt-0.5">⚠️</span>
           <span className="flex-1">
             {lastAbcDate && daysSinceLastAbc !== null ? (
@@ -207,7 +207,7 @@ export default function TrainingPage() {
       )}
 
       {/* Toolbar */}
-      <div className="pb-2 border-b border-border mb-2 shrink-0 space-y-1.5">
+      <div className="pb-1 md:pb-2 border-b border-border mb-1 md:mb-2 shrink-0 space-y-1">
         {/* Row 1: month + actions */}
         <div className="flex items-center gap-2">
           {/* Desktop only: sidebar trigger + overview */}
