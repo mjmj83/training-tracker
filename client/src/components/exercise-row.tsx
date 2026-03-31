@@ -192,20 +192,24 @@ export default function ExerciseRow({
           </div>
         </div>
 
-        {/* Line 2: Settings row 1 (sets, reps/time, tempo) */}
-        <div className="flex gap-2 items-center mt-2">
+        {/* Settings badges — 1 row on desktop, 2 rows on mobile */}
+        <div className="hidden md:flex gap-2 items-center mt-2">
           {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { inputWidth: "w-10", placeholder: "3", tip: "Set range, bijv. 2 of 3-4" })}
-          {renderBadge(
-            trackingType === "time" ? "time(s)" : "reps",
-            goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps",
-            { inputWidth: "w-12", placeholder: trackingType === "time" ? "30" : "10", tip: trackingType === "time" ? "Seconden, bijv. 30 of 30-45" : "Rep range, bijv. 10 of 10-15" }
-          )}
+          {renderBadge(trackingType === "time" ? "time(s)" : "reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-12", placeholder: trackingType === "time" ? "30" : "10", tip: trackingType === "time" ? "Seconden, bijv. 30 of 30-45" : "Rep range, bijv. 10 of 10-15" })}
           {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-10", placeholder: "—", tip: "Elk getal = seconden. Bijv. 3010: 3s zakken, 0s pauze onder, 1s omhoog, 0s rust boven" })}
-        </div>
-        {/* Line 3: Settings row 2 (rest, rir) */}
-        <div className="flex gap-2 items-center mt-1">
           {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { inputWidth: "w-10", placeholder: "60", tip: "Seconden rust tussen de sets" })}
           {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-8", placeholder: "—", tip: "Reps In Reserve range, bijv. 2 of 0-1" })}
+        </div>
+        <div className="md:hidden mt-2 space-y-1">
+          <div className="flex gap-2 items-center">
+            {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { inputWidth: "w-10", placeholder: "3", tip: "Set range, bijv. 2 of 3-4" })}
+            {renderBadge(trackingType === "time" ? "time(s)" : "reps", goalReps, setGoalReps, () => handleBlur("goalReps", goalReps), "reps", { inputWidth: "w-12", placeholder: trackingType === "time" ? "30" : "10", tip: trackingType === "time" ? "Seconden, bijv. 30 of 30-45" : "Rep range, bijv. 10 of 10-15" })}
+            {renderBadge("tempo", tempo, setTempo, () => handleBlur("tempo", tempo), "tempo", { inputWidth: "w-10", placeholder: "—", tip: "Elk getal = seconden. Bijv. 3010: 3s zakken, 0s pauze onder, 1s omhoog, 0s rust boven" })}
+          </div>
+          <div className="flex gap-2 items-center">
+            {renderBadge("rest", rest, setRest, () => handleBlur("rest", rest), "rest", { inputWidth: "w-10", placeholder: "60", tip: "Seconden rust tussen de sets" })}
+            {renderBadge("rir", rir, setRir, () => handleBlur("rir", rir), "rir", { inputWidth: "w-8", placeholder: "—", tip: "Reps In Reserve range, bijv. 2 of 0-1" })}
+          </div>
         </div>
 
         {/* Line 3: Notes — always shown */}
