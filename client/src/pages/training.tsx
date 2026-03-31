@@ -1,7 +1,8 @@
 import { useSelectedClient, useSelectedMonth, getViewMode, saveViewMode } from "@/lib/state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid, ClipboardList, Play } from "lucide-react";
+import { Dumbbell, Undo2, Redo2, Save, Plus, X, Download, List, LayoutGrid, ClipboardList, Play, ChevronDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import OverviewDialog from "@/components/overview-dialog";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import ThemePicker from "@/components/theme-picker";
@@ -218,13 +219,33 @@ export default function TrainingPage() {
         >
           <ClipboardList className="w-4 h-4" />
         </button>
+        {/* Mobile: training day selector */}
+        {isMobile && trainingDays.length > 0 && (() => {
+          const sorted = [...trainingDays].sort((a, b) => a.sortOrder - b.sortOrder);
+          const currentId = activeTabDay && sorted.find(d => d.id === activeTabDay) ? activeTabDay : sorted[0]?.id;
+          return (
+            <Select
+              value={currentId ? String(currentId) : undefined}
+              onValueChange={(v) => setActiveTabDay(parseInt(v))}
+            >
+              <SelectTrigger className="h-8 text-xs w-auto min-w-[120px] gap-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sorted.map(d => (
+                  <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        })()}
         <div className="flex-1" />
-        {/* View mode toggle */}
+        {/* Desktop: View mode toggle */}
         <Button
           size="sm"
           variant="ghost"
           onClick={() => setViewMode(v => { const next = v === "list" ? "tabs" : "list"; saveViewMode(next); return next; })}
-          className="h-7 px-2 text-xs gap-1"
+          className="hidden md:flex h-7 px-2 text-xs gap-1"
           title={viewMode === "list" ? "Tabweergave" : "Lijstweergave"}
           data-testid="button-view-mode"
         >
@@ -321,7 +342,7 @@ export default function TrainingPage() {
             onBeforeChange={pushSnapshot}
             readOnly={!isTrainer}
             hideHeader={hideHeader}
-            defaultCollapsed={isMobile && viewMode === "list"}
+            defaultCollapsed={false}
             canMoveDayUp={idx > 0}
             canMoveDayDown={idx < sortedDays.length - 1}
             onMoveDayUp={async () => {
@@ -343,6 +364,21 @@ export default function TrainingPage() {
           />
         );
 
+        // Mobile: always single-day view (dropdown in toolbar)
+        if (isMobile) {
+          return (
+            <>
+              {sortedDays.map((day, idx) =>
+                day.id === activeDayId ? renderDay(day, idx, true) : null
+              )}
+              {isTrainer && (
+                <AddTrainingDay monthId={monthId} sortOrder={trainingDays.length} onBeforeChange={pushSnapshot} />
+              )}
+            </>
+          );
+        }
+
+        // Desktop: tabs or list
         if (viewMode === "tabs" && sortedDays.length > 0) {
           return (
             <>

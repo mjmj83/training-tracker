@@ -179,12 +179,12 @@ export default function ExerciseRow({
       data-testid={`exercise-row-${exercise.id}`}
     >
       {/* Exercise info block — single td with stacked lines */}
-      <td className="py-1.5 px-2 border border-border border-r-0 rounded-l-[5px]">
+      <td className="py-1.5 px-2 border border-border border-r-0 rounded-l-[5px] sticky left-0 z-10 bg-background">
         {/* Line 1: Exercise name */}
         <div className="flex items-center gap-1">
           <div className="flex-1 min-w-0 flex items-center gap-1">
             <span
-              className={`flex-1 min-w-0 text-[15px] font-semibold truncate ${!readOnly ? "cursor-grab active:cursor-grabbing" : ""}`}
+              className={`flex-1 min-w-0 text-[15px] font-semibold truncate max-w-[180px] md:max-w-none ${!readOnly ? "cursor-grab active:cursor-grabbing" : ""}`}
               data-testid={`text-exercise-name-${exercise.id}`}
             >
               {name}
@@ -192,8 +192,8 @@ export default function ExerciseRow({
           </div>
         </div>
 
-        {/* Line 2: Settings badges */}
-        <div className="flex gap-2 items-center mt-2">
+        {/* Line 2-3: Settings badges — 2 rows on mobile */}
+        <div className="flex flex-wrap gap-x-2 gap-y-1 items-center mt-2">
           {renderBadge("sets", sets, setSets, () => handleBlur("sets", sets), "sets", { inputWidth: "w-10", placeholder: "3", tip: "Set range, bijv. 2 of 3-4" })}
           {renderBadge(
             trackingType === "time" ? "time(s)" : "reps",
@@ -248,7 +248,7 @@ export default function ExerciseRow({
         return (
         <td
           key={weekNum}
-          className={`py-1 px-1 w-[110px] max-w-[110px] transition-colors border-y border-border ${needsRightBorder ? "border-r border-border rounded-r-[5px]" : ""} ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
+          className={`py-1 px-1 min-w-[100px] w-[110px] max-w-[110px] transition-colors border-y border-border whitespace-nowrap ${needsRightBorder ? "border-r border-border rounded-r-[5px]" : ""} ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
           onMouseEnter={() => onWeekHover(weekNum)}
           onMouseLeave={() => onWeekHover(null)}
         >

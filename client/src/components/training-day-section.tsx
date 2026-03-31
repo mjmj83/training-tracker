@@ -310,12 +310,12 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
 
       {/* Exercise Table */}
       {isOpen && (
-        <div>
-          <table className="text-sm border-separate" style={{ borderSpacing: '0 0' }} data-testid={`table-exercises-${day.id}`}>
+        <div className="overflow-x-auto">
+          <table className="text-sm border-separate w-full" style={{ borderSpacing: '0 0' }} data-testid={`table-exercises-${day.id}`}>
             <tbody>
               {/* Week headers row — combined with first group label */}
               <tr>
-                <td className="text-left py-1.5 px-2 align-bottom">
+                <td className="text-left py-1.5 px-2 align-bottom sticky left-0 z-10 bg-background">
                   {/* Show first group label if the first group is grouped */}
                   {groups.length > 0 && groups[0].groupId !== null && groups[0].exercises.length > 1 ? (
                     <div>
