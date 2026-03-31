@@ -179,7 +179,7 @@ export default function ExerciseRow({
       data-testid={`exercise-row-${exercise.id}`}
     >
       {/* Exercise info block — single td with stacked lines */}
-      <td className="py-1.5 px-2 border border-border border-r-0 rounded-l-[5px] sticky left-0 z-10 bg-background">
+      <td className="py-1.5 px-1 md:px-2 md:border md:border-border md:border-r-0 md:rounded-l-[5px] sticky left-0 z-10 bg-background">
         {/* Line 1: Exercise name */}
         <div className="flex items-center gap-1">
           <div className="flex-1 min-w-0 flex items-center gap-1">
@@ -260,7 +260,7 @@ export default function ExerciseRow({
         return (
         <td
           key={weekNum}
-          className={`py-1 px-1 min-w-[100px] w-[110px] max-w-[110px] transition-colors border-y border-border whitespace-nowrap ${needsRightBorder ? "border-r border-border rounded-r-[5px]" : ""} ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
+          className={`py-1 px-1 min-w-[100px] w-[110px] max-w-[110px] transition-colors md:border-y md:border-border whitespace-nowrap ${needsRightBorder ? "md:border-r md:border-border md:rounded-r-[5px]" : ""} ${hoveredWeek === weekNum ? "bg-primary/10" : ""}`}
           onMouseEnter={() => onWeekHover(weekNum)}
           onMouseLeave={() => onWeekHover(null)}
         >
@@ -295,7 +295,7 @@ export default function ExerciseRow({
 
       {/* Menu column — far right */}
       {!readOnly && (
-        <td className="py-1 px-1 w-8 align-top border border-border border-l-0 rounded-r-[5px]">
+        <td className="py-1 px-1 w-8 align-top md:border md:border-border md:border-l-0 md:rounded-r-[5px]">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="text-muted-foreground/40 hover:text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-1" data-testid={`button-menu-${exercise.id}`}>
