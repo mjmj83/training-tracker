@@ -174,7 +174,7 @@ export default function TrainingPage() {
   };
 
   return (
-    <div className="flex flex-col h-full md:block md:h-auto p-2 md:p-4 md:space-y-2">
+    <div className="flex flex-col h-full overflow-hidden md:overflow-visible md:block md:h-auto p-2 md:p-4 md:space-y-2">
       {/* Body fat reminder banner */}
       {bfReminderNeeded && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-3 py-2 md:px-4 md:py-3 flex items-start gap-2 text-xs md:text-sm shrink-0">
