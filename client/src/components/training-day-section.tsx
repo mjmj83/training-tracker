@@ -412,7 +412,7 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                       )}
                       {/* Group label for 2nd+ groups */}
                       {showGroupLabel && (
-                        <tr><td colSpan={999} className="p-0 border-0" style={{ lineHeight: '16px' }}>
+                        <tr><td colSpan={999} className="p-0 border-0 sticky left-0 z-10 bg-background" style={{ lineHeight: '16px' }}>
                           {!readOnly && groups.length > 1 ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

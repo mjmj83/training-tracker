@@ -207,123 +207,115 @@ export default function TrainingPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 pb-2 border-b border-border mb-2 shrink-0">
-        {/* Desktop only: sidebar trigger + overview */}
-        <SidebarTrigger className="hidden md:flex" data-testid="button-sidebar-toggle" />
-        <MonthSwitcher readOnly={!isTrainer} />
-        <button
-          onClick={() => setShowOverview(true)}
-          className="hidden md:flex p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          title="Overzicht"
-          data-testid="button-overview"
-        >
-          <ClipboardList className="w-4 h-4" />
-        </button>
-        {/* Mobile: training day selector */}
+      <div className="pb-2 border-b border-border mb-2 shrink-0 space-y-1.5">
+        {/* Row 1: month + actions */}
+        <div className="flex items-center gap-2">
+          {/* Desktop only: sidebar trigger + overview */}
+          <SidebarTrigger className="hidden md:flex" data-testid="button-sidebar-toggle" />
+          <MonthSwitcher readOnly={!isTrainer} />
+          <button
+            onClick={() => setShowOverview(true)}
+            className="hidden md:flex p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Overzicht"
+            data-testid="button-overview"
+          >
+            <ClipboardList className="w-4 h-4" />
+          </button>
+          <div className="flex-1" />
+          {/* Desktop: View mode toggle */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setViewMode(v => { const next = v === "list" ? "tabs" : "list"; saveViewMode(next); return next; })}
+            className="hidden md:flex h-7 px-2 text-xs gap-1"
+            title={viewMode === "list" ? "Tabweergave" : "Lijstweergave"}
+            data-testid="button-view-mode"
+          >
+            {viewMode === "list" ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
+          </Button>
+          {isTrainer && (
+            <div className="flex items-center gap-1">
+              <WeekCountSelector monthId={monthId} currentCount={weekCount} />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { if (canUndo) undo(); }}
+                disabled={!canUndo}
+                className="h-7 px-2 text-xs gap-1"
+                data-testid="button-undo"
+                title={`Ongedaan maken (${undoCount})`}
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Undo</span>
+                {undoCount > 0 && <span className="text-muted-foreground hidden sm:inline">({undoCount})</span>}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { if (canRedo) redo(); }}
+                disabled={!canRedo}
+                className="h-7 px-2 text-xs gap-1"
+                data-testid="button-redo"
+                title={`Opnieuw (${redoCount})`}
+              >
+                <Redo2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Redo</span>
+                {redoCount > 0 && <span className="text-muted-foreground hidden sm:inline">({redoCount})</span>}
+              </Button>
+              {/* Desktop only: save + export */}
+              <Button size="sm" variant="outline" onClick={() => saveState.mutate()} className="hidden md:flex h-7 px-2 text-xs gap-1" data-testid="button-save">
+                <Save className="w-3.5 h-3.5" /><span className="hidden sm:inline">Opslaan</span>
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                onClick={async () => {
+                  try {
+                    const res = await apiRequest("GET", `/api/clients/${clientId}/export`);
+                    const blob = await res.blob(); const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a"); a.href = url;
+                    const disposition = res.headers.get("content-disposition");
+                    const match = disposition?.match(/filename="(.+)"/);
+                    a.download = match?.[1] || "Training Export.xlsx"; a.click(); URL.revokeObjectURL(url);
+                  } catch (e) { toast({ title: "Fout", description: "Export mislukt", variant: "destructive" }); }
+                }}
+                className="hidden md:flex h-7 px-2 text-xs gap-1" data-testid="button-export" title="Exporteer alle trainingsblokken naar Excel"
+              >
+                <Download className="w-3.5 h-3.5" /><span className="hidden sm:inline">Export</span>
+              </Button>
+            </div>
+          )}
+          {!isTrainer && <div className="flex-1" />}
+          <div className="hidden md:block"><ThemePicker /></div>
+        </div>
+
+        {/* Row 2 (mobile only): training day selector + play */}
         {isMobile && trainingDays.length > 0 && (() => {
           const sorted = [...trainingDays].sort((a, b) => a.sortOrder - b.sortOrder);
           const currentId = activeTabDay && sorted.find(d => d.id === activeTabDay) ? activeTabDay : sorted[0]?.id;
           return (
-            <Select
-              value={currentId ? String(currentId) : undefined}
-              onValueChange={(v) => setActiveTabDay(parseInt(v))}
-            >
-              <SelectTrigger className="h-8 text-xs w-auto min-w-[120px] gap-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {sorted.map(d => (
-                  <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={currentId ? String(currentId) : undefined} onValueChange={(v) => setActiveTabDay(parseInt(v))}>
+                <SelectTrigger className="h-8 text-xs flex-1 gap-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sorted.map(d => (
+                    <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currentId && (
+                <button
+                  onClick={() => window.open(`/#/train/${monthId}/${currentId}`, "_blank", "width=420,height=750")}
+                  className="p-1.5 text-primary hover:text-primary/80 transition-colors"
+                  title="Train Now"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                </button>
+              )}
+            </div>
           );
         })()}
-        <div className="flex-1" />
-        {/* Desktop: View mode toggle */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setViewMode(v => { const next = v === "list" ? "tabs" : "list"; saveViewMode(next); return next; })}
-          className="hidden md:flex h-7 px-2 text-xs gap-1"
-          title={viewMode === "list" ? "Tabweergave" : "Lijstweergave"}
-          data-testid="button-view-mode"
-        >
-          {viewMode === "list" ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
-        </Button>
-        {isTrainer && (
-          <div className="flex items-center gap-1">
-            <WeekCountSelector monthId={monthId} currentCount={weekCount} />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => { if (canUndo) undo(); }}
-              disabled={!canUndo}
-              className="h-7 px-2 text-xs gap-1"
-              data-testid="button-undo"
-              title={`Ongedaan maken (${undoCount})`}
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Undo</span>
-              {undoCount > 0 && <span className="text-muted-foreground hidden sm:inline">({undoCount})</span>}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => { if (canRedo) redo(); }}
-              disabled={!canRedo}
-              className="h-7 px-2 text-xs gap-1"
-              data-testid="button-redo"
-              title={`Opnieuw (${redoCount})`}
-            >
-              <Redo2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Redo</span>
-              {redoCount > 0 && <span className="text-muted-foreground hidden sm:inline">({redoCount})</span>}
-            </Button>
-            {/* Desktop only: save + export */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => saveState.mutate()}
-              className="hidden md:flex h-7 px-2 text-xs gap-1"
-              data-testid="button-save"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Opslaan</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={async () => {
-                try {
-                  const res = await apiRequest("GET", `/api/clients/${clientId}/export`);
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  const disposition = res.headers.get("content-disposition");
-                  const match = disposition?.match(/filename="(.+)"/);
-                  a.download = match?.[1] || "Training Export.xlsx";
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch (e) {
-                  toast({ title: "Fout", description: "Export mislukt", variant: "destructive" });
-                }
-              }}
-              className="hidden md:flex h-7 px-2 text-xs gap-1"
-              data-testid="button-export"
-              title="Exporteer alle trainingsblokken naar Excel"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
-          </div>
-        )}
-        {!isTrainer && <div className="flex-1" />}
-        {/* Desktop only: theme picker */}
-        <div className="hidden md:block">
-          <ThemePicker />
-        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible md:flex-none">

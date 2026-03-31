@@ -183,12 +183,17 @@ export default function ExerciseRow({
         {/* Line 1: Exercise name */}
         <div className="flex items-center gap-1">
           <div className="flex-1 min-w-0 flex items-center gap-1">
-            <span
-              className={`flex-1 min-w-0 text-[15px] font-semibold truncate max-w-[180px] md:max-w-none ${!readOnly ? "cursor-grab active:cursor-grabbing" : ""}`}
-              data-testid={`text-exercise-name-${exercise.id}`}
-            >
-              {name}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={`flex-1 min-w-0 text-[15px] font-semibold truncate max-w-[180px] md:max-w-none ${!readOnly ? "cursor-grab active:cursor-grabbing" : ""}`}
+                  data-testid={`text-exercise-name-${exercise.id}`}
+                >
+                  {name}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="md:hidden text-xs font-semibold">{name}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
