@@ -234,7 +234,7 @@ export default function ExerciseRow({
                     {notes}
                   </p>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-wrap">{notes}</TooltipContent>
+                <TooltipContent side="top" className="max-w-xs text-xs whitespace-pre-wrap">{notes}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -245,7 +245,7 @@ export default function ExerciseRow({
               <TooltipTrigger asChild>
                 <p className="text-xs text-muted-foreground italic cursor-default leading-tight max-w-[150px] md:max-w-[260px] line-clamp-2 md:line-clamp-1">{notes}</p>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-wrap">{notes}</TooltipContent>
+              <TooltipContent side="top" className="max-w-xs text-xs whitespace-pre-wrap">{notes}</TooltipContent>
             </Tooltip>
           </div>
         ) : null}
