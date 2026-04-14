@@ -50,6 +50,7 @@ export default function WeightCell({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey.includes("all-blocks") });
     },
   });
 

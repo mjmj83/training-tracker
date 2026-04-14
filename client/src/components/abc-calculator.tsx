@@ -280,7 +280,7 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
       {/* Charts */}
       {chartData.length > 0 && (
         <>
-          <MiniChart title="Body Composition verloop" icon={<TrendingDown className="w-4 h-4 text-primary" />}
+          <MiniChart title="Vetpercentage verloop" icon={<TrendingDown className="w-4 h-4 text-primary" />}
             data={chartData} dataKey="bodyFatPct" unit="%" color="hsl(var(--chart-1))" />
           <MiniChart title="Nekomtrek" icon={<Ruler className="w-4 h-4 text-primary" />}
             data={chartData} dataKey="neckCm" unit=" cm" color="hsl(var(--chart-2))" />
@@ -303,36 +303,55 @@ export default function AbcCalculator({ clientId, clientGender }: Props) {
       {sorted.length > 0 && (
         <div>
           <h3 className="text-xs font-medium text-muted-foreground mb-2">Metingen ({sorted.length})</h3>
-          <div className="border border-border rounded-md divide-y divide-border">
-            {[...sorted].reverse().map((m) => (
-              <div key={m.id} className="flex items-center gap-3 px-3 py-2 text-xs group">
-                <span className="text-muted-foreground w-[70px]">
-                  {new Date(m.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" })}
-                </span>
-                <span className="font-semibold text-primary">{m.bodyFatPct}%</span>
-                {m.weightKg ? (
-                  <>
-                    <span className="text-muted-foreground">{Math.round((m.bodyFatPct / 100) * m.weightKg * 10) / 10} kg vet</span>
-                    <span className="text-muted-foreground">{Math.round((m.weightKg - (m.bodyFatPct / 100) * m.weightKg) * 10) / 10} kg lean</span>
-                  </>
-                ) : null}
-                <span className="text-muted-foreground">nek {m.neckCm}</span>
-                <span className="text-muted-foreground">buik {m.abdomenCm}</span>
-                {m.hipCm ? <span className="text-muted-foreground">heup {m.hipCm}</span> : null}
-                {m.weightKg ? <span className="text-muted-foreground">{m.weightKg} kg</span> : null}
-                <span className="text-muted-foreground/60">{m.gender === "male" ? "M" : "V"}</span>
-                <div className="flex-1" />
-                {isTrainer && (
-                  <button
-                    onClick={() => setConfirmDeleteId(m.id)}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                    data-testid={`button-delete-abc-${m.id}`}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))}
+          <div className="overflow-x-auto border border-border rounded-md">
+            <table className="text-xs w-full">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground">
+                  <th className="text-left px-3 py-1.5 font-medium">Datum</th>
+                  <th className="text-right px-2 py-1.5 font-medium">Vet%</th>
+                  <th className="text-right px-2 py-1.5 font-medium">Gewicht</th>
+                  <th className="text-right px-2 py-1.5 font-medium">Vet kg</th>
+                  <th className="text-right px-2 py-1.5 font-medium">Lean kg</th>
+                  <th className="text-right px-2 py-1.5 font-medium">Nek</th>
+                  <th className="text-right px-2 py-1.5 font-medium">Buik</th>
+                  {sorted.some(m => m.hipCm) && <th className="text-right px-2 py-1.5 font-medium">Heup</th>}
+                  <th className="text-right px-2 py-1.5 font-medium">Lengte</th>
+                  {isTrainer && <th className="w-8"></th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[...sorted].reverse().map((m) => {
+                  const fatKg = m.weightKg ? Math.round((m.bodyFatPct / 100) * m.weightKg * 10) / 10 : null;
+                  const leanKg = m.weightKg ? Math.round((m.weightKg - (m.bodyFatPct / 100) * m.weightKg) * 10) / 10 : null;
+                  return (
+                    <tr key={m.id} className="group hover:bg-muted/30">
+                      <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">
+                        {new Date(m.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-semibold text-primary tabular-nums">{m.bodyFatPct}%</td>
+                      <td className="px-2 py-1.5 text-right text-muted-foreground tabular-nums">{m.weightKg ? `${m.weightKg}` : "—"}</td>
+                      <td className="px-2 py-1.5 text-right text-muted-foreground tabular-nums">{fatKg ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right text-muted-foreground tabular-nums">{leanKg ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right text-muted-foreground tabular-nums">{m.neckCm}</td>
+                      <td className="px-2 py-1.5 text-right text-muted-foreground tabular-nums">{m.abdomenCm}</td>
+                      {sorted.some(mm => mm.hipCm) && <td className="px-2 py-1.5 text-right text-muted-foreground tabular-nums">{m.hipCm ?? "—"}</td>}
+                      <td className="px-2 py-1.5 text-right text-muted-foreground tabular-nums">{m.heightCm}</td>
+                      {isTrainer && (
+                        <td className="px-2 py-1.5">
+                          <button
+                            onClick={() => setConfirmDeleteId(m.id)}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                            data-testid={`button-delete-abc-${m.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
