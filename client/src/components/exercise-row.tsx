@@ -328,7 +328,7 @@ export default function ExerciseRow({
                 return (
                   <DropdownMenuItem onClick={() => setShowLinkDialog(true)}>
                     <Link2 className="w-4 h-4 mr-2" />
-                    Voeg toe aan andere training
+                    Voeg toe aan andere oefening/superset
                   </DropdownMenuItem>
                 );
               })()}
@@ -406,7 +406,7 @@ export default function ExerciseRow({
             <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
               <DialogContent className="sm:max-w-[380px]">
                 <DialogHeader>
-                  <DialogTitle className="text-sm">Voeg toe aan andere training</DialogTitle>
+                  <DialogTitle className="text-sm">Voeg toe aan andere oefening/superset</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-1 py-2 max-h-[60vh] overflow-y-auto">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium px-1 mb-1">
