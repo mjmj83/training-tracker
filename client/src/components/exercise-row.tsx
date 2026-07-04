@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon, Search, Check, Upload, Info } from "lucide-react";
+import { Trash2, Unlink, MessageCircleWarning, BarChart3, Settings, MoreVertical, ArrowUp, ArrowDown, ArrowUpDown, ImageIcon, Search, Check, Upload, Info, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,6 +37,8 @@ interface Props {
   canMoveDown?: boolean;
   onSwapSupersetOrder?: () => void;
   lockedWeeks?: Set<number>;
+  siblingExercises?: Exercise[];
+  groupLabels?: Map<number, string>;
 }
 
 export default function ExerciseRow({
@@ -47,6 +49,7 @@ export default function ExerciseRow({
   readOnly = false,
   onMoveUp, onMoveDown, canMoveUp = false, canMoveDown = false,
   onSwapSupersetOrder,
+  siblingExercises = [], groupLabels,
 }: Props) {
   const [name, setName] = useState(exercise.name);
   const [sets, setSets] = useState(String(exercise.sets ?? "3"));
@@ -83,6 +86,15 @@ export default function ExerciseRow({
     mutationFn: () => apiRequest("POST", `/api/exercises/${exercise.id}/unsuperset`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+    },
+  });
+
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const linkToSuperset = useMutation({
+    mutationFn: (ids: number[]) => apiRequest("POST", "/api/exercises/superset", { exerciseIds: ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/months", monthId, "full"] });
+      setShowLinkDialog(false);
     },
   });
 
@@ -307,6 +319,19 @@ export default function ExerciseRow({
                 <Settings className="w-4 h-4 mr-2" />
                 Instellingen
               </DropdownMenuItem>
+              {(() => {
+                // Only offer link if there are siblings we can connect to (not in same group)
+                const canLink = siblingExercises.some(s =>
+                  s.id !== exercise.id && s.supersetGroupId !== exercise.supersetGroupId
+                );
+                if (!canLink) return null;
+                return (
+                  <DropdownMenuItem onClick={() => setShowLinkDialog(true)}>
+                    <Link2 className="w-4 h-4 mr-2" />
+                    Voeg toe aan andere training
+                  </DropdownMenuItem>
+                );
+              })()}
               {isSuperset && (
                 <DropdownMenuItem onClick={() => { onBeforeChange(); unSuperset.mutate(); }}>
                   <Unlink className="w-4 h-4 mr-2" />
@@ -362,6 +387,95 @@ export default function ExerciseRow({
 
       {/* Hidden td for dialogs and chart */}
       <td className="p-0 w-0 border-0">
+        {/* Link to superset dialog */}
+        {!readOnly && (() => {
+          // Group siblings by supersetGroupId. Only groups the current exercise is not already in.
+          const existingGroups = new Map<number, Exercise[]>();
+          const soloSiblings: Exercise[] = [];
+          for (const s of siblingExercises) {
+            if (s.id === exercise.id) continue;
+            if (s.supersetGroupId !== null && s.supersetGroupId !== exercise.supersetGroupId) {
+              const existing = existingGroups.get(s.supersetGroupId) ?? [];
+              existing.push(s);
+              existingGroups.set(s.supersetGroupId, existing);
+            } else if (s.supersetGroupId === null) {
+              soloSiblings.push(s);
+            }
+          }
+          return (
+            <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+              <DialogContent className="sm:max-w-[380px]">
+                <DialogHeader>
+                  <DialogTitle className="text-sm">Voeg toe aan andere training</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-1 py-2 max-h-[60vh] overflow-y-auto">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium px-1 mb-1">
+                    {exercise.name}
+                  </p>
+
+                  {/* Existing supersets */}
+                  {existingGroups.size > 0 && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium px-1 pt-2">Bestaande supersets</p>
+                      {Array.from(existingGroups.entries()).map(([gid, exs]) => {
+                        const label = groupLabels?.get(gid) ?? "Superset";
+                        const groupSize = exs.length;
+                        const wouldExceed = groupSize + 1 > 5;
+                        return (
+                          <button
+                            key={gid}
+                            disabled={wouldExceed || linkToSuperset.isPending}
+                            onClick={() => {
+                              onBeforeChange();
+                              linkToSuperset.mutate([exercise.id, ...exs.map(e => e.id)]);
+                            }}
+                            className="flex items-center gap-3 w-full rounded-md px-2.5 py-2 text-left hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            data-testid={`link-group-${gid}`}
+                          >
+                            <Link2 className="w-4 h-4 text-primary shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">{label}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {exs.map(e => e.name).join(" · ")}
+                              </p>
+                            </div>
+                            {wouldExceed && <span className="text-[10px] text-muted-foreground">vol</span>}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* Single exercises to pair with */}
+                  {soloSiblings.length > 0 && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium px-1 pt-3">Maak nieuwe superset</p>
+                      {soloSiblings.map(s => (
+                        <button
+                          key={s.id}
+                          disabled={linkToSuperset.isPending}
+                          onClick={() => {
+                            onBeforeChange();
+                            linkToSuperset.mutate([exercise.id, s.id]);
+                          }}
+                          className="flex items-center gap-3 w-full rounded-md px-2.5 py-2 text-left hover:bg-accent transition-colors disabled:opacity-40"
+                          data-testid={`link-solo-${s.id}`}
+                        >
+                          <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm flex-1 truncate">{s.name}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {existingGroups.size === 0 && soloSiblings.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Geen andere oefeningen beschikbaar</p>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
         {!readOnly && (
           <ConfirmDialog
             open={showDeleteConfirm}

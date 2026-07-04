@@ -461,6 +461,8 @@ export default function TrainingDaySection({ day, exercises, weekDates, monthId,
                         canMoveUp={globalIdx > 0}
                         canMoveDown={globalIdx < sortedExercises.length - 1}
                         onSwapSupersetOrder={isGrouped ? () => swapSupersetOrder(ex.id) : undefined}
+                        siblingExercises={sortedExercises}
+                        groupLabels={groupLabelMap}
                       />
                     </Fragment>
                   );
