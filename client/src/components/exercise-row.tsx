@@ -320,10 +320,17 @@ export default function ExerciseRow({
                 Instellingen
               </DropdownMenuItem>
               {(() => {
-                // Only offer link if there are siblings we can connect to (not in same group)
-                const canLink = siblingExercises.some(s =>
-                  s.id !== exercise.id && s.supersetGroupId !== exercise.supersetGroupId
-                );
+                // Offer link when there is any other exercise not already in this exercise's superset group.
+                // Solo exercises (supersetGroupId === null) are always linkable unless the current exercise
+                // is already in the same solo state as the sibling AND already grouped with it — which is
+                // impossible when both are null (no group). So we treat solo siblings as always linkable.
+                const canLink = siblingExercises.some(s => {
+                  if (s.id === exercise.id) return false;
+                  // Sibling is solo — always linkable to this exercise
+                  if (s.supersetGroupId === null) return true;
+                  // Sibling is in a group — linkable only if not this exercise's group
+                  return s.supersetGroupId !== exercise.supersetGroupId;
+                });
                 if (!canLink) return null;
                 return (
                   <DropdownMenuItem onClick={() => setShowLinkDialog(true)}>
