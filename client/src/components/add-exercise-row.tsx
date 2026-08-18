@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSelectedClient } from "@/lib/state";
 import { Plus } from "lucide-react";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import type { ExerciseLibrary } from "@shared/schema";
 
 interface Props {
@@ -111,30 +112,36 @@ export default function AddExerciseRow({ trainingDayId, monthId, sortOrder, onBe
     );
   }
 
-  return (
-    <div className="relative px-2 py-1">
-      <input
-        ref={inputRef}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={() => {
-          // Small delay to allow click on suggestion
-          setTimeout(() => {
-            setIsAdding(false);
-            setSearchQuery("");
-          }, 200);
-        }}
-        placeholder="Zoek of typ oefening... (bijv. 'bench', 'deadlift')"
-        className="w-full bg-muted/50 border border-border rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
-        data-testid={`input-search-exercise-${trainingDayId}`}
-      />
+  const showDropdown = searchQuery.length > 0 && suggestions.length > 0;
 
-      {/* Autocomplete dropdown */}
-      {searchQuery.length > 0 && suggestions.length > 0 && (
-        <div
+  return (
+    <div className="px-2 py-1">
+      <Popover open={showDropdown}>
+        <PopoverAnchor asChild>
+          <input
+            ref={inputRef}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={() => {
+              // Small delay to allow click on suggestion
+              setTimeout(() => {
+                setIsAdding(false);
+                setSearchQuery("");
+              }, 200);
+            }}
+            placeholder="Zoek of typ oefening... (bijv. 'bench', 'deadlift')"
+            className="w-full bg-muted/50 border border-border rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+            data-testid={`input-search-exercise-${trainingDayId}`}
+          />
+        </PopoverAnchor>
+        <PopoverContent
           ref={dropdownRef}
-          className="absolute left-2 right-2 top-full mt-1 bg-popover border border-popover-border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+          align="start"
+          sideOffset={4}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="p-0 max-h-48 overflow-y-auto w-[var(--radix-popover-trigger-width)] min-w-[240px]"
           data-testid={`dropdown-suggestions-${trainingDayId}`}
         >
           {suggestions.map((s, i) => (
@@ -152,8 +159,8 @@ export default function AddExerciseRow({ trainingDayId, monthId, sortOrder, onBe
               {s.name}
             </button>
           ))}
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
